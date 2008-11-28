@@ -1,41 +1,68 @@
 h1. alter ego
 
-
 h2. What
 
+AlterEgo is a Ruby implementation of the "State pattern":http://en.wikipedia.org/wiki/State_pattern as described by the Gang of Four.  It differs from other Ruby state machine libraries in that it focuses on providing polymorphic behavior based on object state.  In effect, it makes it easy to give an object different "personalities" depending on the state it is in.
 
 h2. Installing
 
 <pre syntax="ruby">sudo gem install alter-ego</pre>
 
-h2. The basics
+h2. Rationale
 
+Sometimes you want a single object to behave differently depending on what state it's in.  For instance, a traffic light has a different color depending on whether it is informing people that they should stop, slow down, or proceed.  Or a user account object might behave differently depending on whether the account is in the "confirmed" state.  AlterEgo can help you set up these state-based object "personalities".
 
-h2. Demonstration of usage
+AlterEgo will help you to define a set of valid states for your objects, and to define the allowable transitions between states.  The real strength of AlterEgo, however, is in defining separate behaviors for each state that the object is in. Underneath the covers, AlterEgo will arrange for your object to delegate to a different state object depending on what state it is in.  You can either explicitly define these state objects as classes, or use a concise DSL provided by AlterEgo.
 
+h2. Synopsis
 
+<pre syntax="ruby">
+  class TrafficLight
+    include AlterEgo
 
-h2. Forum
+    state :proceed, :default => true do
+      handle :color do
+	"green"
+      end
+      transition :to => :caution, :on => :cycle!
+    end
 
-"http://groups.google.com/group/alter-ego":http://groups.google.com/group/alter-ego
+    state :caution do
+      handle :color do
+	"yellow"
+      end
+      transition :to => :stop, :on => :cycle!
+    end
 
-TODO - create Google Group - alter-ego
+    state :stop do
+      handle :color do
+	"red"
+      end 
+      transition :to => :proceed, :on => :cycle!
+    end
+  end
 
-h2. How to submit patches
+  light = TrafficLight.new
+  light.color                     # => "green"
+  light.cycle!
+  light.color                     # => "yellow"
+  light.cycle!
+  light.color                     # => "red"
+  light.cycle!
+  light.color                     # => "green"
+</pre>
 
-Read the "8 steps for fixing other people's code":http://drnicwilliams.com/2007/06/01/8-steps-for-fixing-other-peoples-code/ and for section "8b: Submit patch to Google Groups":http://drnicwilliams.com/2007/06/01/8-steps-for-fixing-other-peoples-code/#8b-google-groups, use the Google Group above.
+h2. Documentation
 
-TODO - pick SVN or Git instructions
+See the project's "RDoc":http://alter-ego.rubyforge.org/rdoc/
 
-The trunk repository is <code>svn://rubyforge.org/var/svn/alter-ego/trunk</code> for anonymous access.
+h2. Development
 
-OOOORRRR
-
-You can fetch the source from either:
+You can fetch the source from RubyForge using Git:
 
 <% if rubyforge_project_id %>
 
-* rubyforge: "http://rubyforge.org/scm/?group_id=<%= rubyforge_project_id %>":http://rubyforge.org/scm/?group_id=<%= rubyforge_project_id %>
+"http://rubyforge.org/scm/?group_id=<%= rubyforge_project_id %>":http://rubyforge.org/scm/?group_id=<%= rubyforge_project_id %>
 
 <pre>git clone git://rubyforge.org/alter-ego.git</pre>
 
@@ -52,30 +79,11 @@ Or you can hack website/index.txt and make it all go away!!
 
 <% end %>
 
-* github: "http://github.com/GITHUB_USERNAME/alter-ego/tree/master":http://github.com/GITHUB_USERNAME/alter-ego/tree/master
-
-<pre>git clone git://github.com/GITHUB_USERNAME/alter-ego.git</pre>
-
-
-TODO - add "github_username: username" to ~/.rubyforge/user-config.yml and newgem will reuse it for future projects.
-
-
-* gitorious: "git://gitorious.org/alter-ego/mainline.git":git://gitorious.org/alter-ego/mainline.git
-
-<pre>git clone git://gitorious.org/alter-ego/mainline.git</pre>
-
-h3. Build and test instructions
-
-<pre>cd alter-ego
-rake test
-rake install_gem</pre>
-
-
 h2. License
 
 This code is free to use under the terms of the MIT license. 
 
 h2. Contact
 
-Comments are welcome. Send an email to "TODO":mailto:TODO via the "forum":http://groups.google.com/group/alter-ego
+Questions, comments, suggestions: Email "Avdi Grimm":mailto:avdi@avdi.org
 

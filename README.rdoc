@@ -1,6 +1,6 @@
-= states
+= AlterEgo
 
-* FIX (url)
+* http://alter-ego.rubyforge.org
 
 == DESCRIPTION:
 
@@ -92,7 +92,7 @@ behavior.
 
 This file only scratches the surface of AlterEgo
 functionality.  For complete tutorial documentation, see the file
-spec/states_spec.rb.  It contains the annotated specification,
+spec/alter_ego_spec.rb.  It contains the annotated specification,
 written in the style of a step-by-step tutorial.
 
 === Terminology:
@@ -121,7 +121,7 @@ written in the style of a step-by-step tutorial.
 
 == INSTALL:
 
-* sudo gem install states
+* sudo gem install alter-ego
 
 == LICENSE:
 

@@ -2,6 +2,7 @@ History.txt
 Manifest.txt
 PostInstall.txt
 README.rdoc
+State_Design_Pattern_UML_Class_Diagram.png
 Rakefile
 TODO
 assertions.rb
