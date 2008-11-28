@@ -52,6 +52,17 @@ h2. Synopsis
   light.color                     # => "green"
 </pre>
 
+h2. Features
+
+* Implemented as a module which can be included in any Ruby class.
+* Fully tested with literate RSpec
+* Guard clauses may be defined for each transition.
+* Enter/exit actions may be defined for each state.
+* For more advanced scenarios, arbitrary "request filters" may be defined with full control over which requests are filtered.
+* Uses dynamic module generation and delegation instead of method rewriting.
+* Pervasive contract-checking catches mistakes in library usage early.
+* Storing and reading current state is completely customizable, making it easier to add AlterEgo to legacy classes.
+
 h2. Documentation
 
 See the project's "RDoc":http://alter-ego.rubyforge.org/rdoc/
@@ -78,6 +89,10 @@ When you do this, this message will magically disappear!
 Or you can hack website/index.txt and make it all go away!!
 
 <% end %>
+
+h2. Acknowledgements
+
+Thank you to "MDlogix":http://mdlogix.com, where this code was initially developed, for kindly permitting me to release AlterEgo to the public.
 
 h2. License
 

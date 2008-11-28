@@ -80,12 +80,25 @@
   <span class="ident">light</span><span class="punct">.</span><span class="ident">cycle!</span>
   <span class="ident">light</span><span class="punct">.</span><span class="ident">color</span>                     <span class="comment"># =&gt; &quot;green&quot;</span>
 </pre></p>
+<h2>Features</h2>
+<ul>
+	<li>Implemented as a module which can be included in any Ruby class.</li>
+	<li>Fully tested with literate RSpec</li>
+	<li>Guard clauses may be defined for each transition.</li>
+	<li>Enter/exit actions may be defined for each state.</li>
+	<li>For more advanced scenarios, arbitrary &#8220;request filters&#8221; may be defined with full control over which requests are filtered.</li>
+	<li>Uses dynamic module generation and delegation instead of method rewriting.</li>
+	<li>Pervasive contract-checking catches mistakes in library usage early.</li>
+	<li>Storing and reading current state is completely customizable, making it easier to add AlterEgo to legacy classes.</li>
+</ul>
 <h2>Documentation</h2>
 <p>See the project&#8217;s <a href="http://alter-ego.rubyforge.org/rdoc/">RDoc</a></p>
 <h2>Development</h2>
 <p>You can fetch the source from RubyForge using Git:</p>
 <p><a href="http://rubyforge.org/scm/?group_id=7389">http://rubyforge.org/scm/?group_id=7389</a></p>
 <pre>git clone git://rubyforge.org/alter-ego.git</pre>
+<h2>Acknowledgements</h2>
+<p>Thank you to <a href="http://mdlogix.com">MDlogix</a>, where this code was initially developed, for kindly permitting me to release AlterEgo to the public.</p>
 <h2>License</h2>
 <p>This code is free to use under the terms of the <span class="caps">MIT</span> license.</p>
 <h2>Contact</h2>
