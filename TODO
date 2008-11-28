@@ -1,0 +1,10 @@
+* TODO Factor assertions out into separate library
+* TODO Remove ActiveSupport dependency
+* TODO Nested state support with history
+* TODO Verify full methods/respond_to? integration
+* TODO Composite state support
+  E.g. a Traffic Light could have both green/yellow/red state and "in
+  service"/out of service" state at the same time
+* TODO More natural/Rubyish DSL
+  It would be good to have plain-old "def" work as expected inside of "state"
+  blocks instead of requiring "handle".

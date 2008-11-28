@@ -1,0 +1,149 @@
+= states
+
+* FIX (url)
+
+== DESCRIPTION:
+
+AlterEgo is a Ruby implementation of the State pattern as described by the Gang
+of Four.  It differs from other Ruby state machine libraries in that it focuses
+on providing polymorphic behavior based on object state.  In effect, it makes it
+easy to give an object different personalities depending on the state it is in.
+
+== SYNOPSIS:
+
+  class TrafficLight
+    include AlterEgo
+
+    state :proceed, :default => true do
+      handle :color do
+	"green"
+      end
+      transition :to => :caution, :on => :cycle!
+    end
+
+    state :caution do
+      handle :color do
+	"yellow"
+      end
+      transition :to => :stop, :on => :cycle!
+    end
+
+    state :stop do
+      handle :color do
+	"red"
+      end 
+      transition :to => :proceed, :on => :cycle!
+    end
+  end
+
+  light = TrafficLight.new
+  light.color                     # => "green"
+  light.cycle!
+  light.color                     # => "yellow"
+  light.cycle!
+  light.color                     # => "red"
+  light.cycle!
+  light.color                     # => "green"
+
+
+== FEATURES:
+
+* Implemented as a module which can be included in any Ruby class.
+* Fully tested with literate RSpec
+* Guard clauses may be defined for each transition.
+* Enter/exit actions may be defined for each state.
+* For more advanced scenarios, arbitrary "request filters" may be
+  defined with full control over which requests are filtered.
+* Uses dynamic module generation and delegation instead of method
+  rewriting.
+* Pervasive contract-checking catches mistakes in library usage
+  early.
+* Storing and reading current state is completely customizable,
+  making it easier to add AlterEgo to legacy classes.
+
+== DETAILS:
+
+AlterEgo differs from other Finite State Machine implementations in
+Ruby in that where other libraries focus on describing a set of
+valid state transitions, AlterEgo focuses on varying _behavior_ based
+on state.  In other words, it provides state-based polymorphism.
+
+AlterEgo draws heavily on the State Pattern as published in the book
+Design Patterns[1].  A summary of the pattern can be
+found on Wikipedia[http://en.wikipedia.org/wiki/State_pattern].
+Because AlterEgo uses the terminology set forth in the State Pattern,
+it is useful to have some familiarity with the pattern in order to
+understand the library.
+
+link://State_Design_Pattern_UML_Class_Diagram.png
+
+In the State Pattern, states of an object are represented as
+discrete objects.  At any given time an object with state-based
+behavior has-a state object.  The object with state-based behavior
+delegates certain method calls to its current state.  In this way,
+the implementation of those methods can vary with the state of the
+object.  Or in certain states some methods may not be supported at
+all.
+
+The AlterEgo library provides both an object model for manually
+setting up explicit state classes, and a concise DSL built on top
+of that model which simplifies building classes with state-based
+behavior.
+
+This file only scratches the surface of AlterEgo
+functionality.  For complete tutorial documentation, see the file
+spec/states_spec.rb.  It contains the annotated specification,
+written in the style of a step-by-step tutorial.
+
+=== Terminology:
+
+[Context] The *context* is the class which should have state-based
+          behavior.  In the example above, the +TrafficLight+ class
+          is the context.
+[State] Each *state* the *context* might exist in is represented by a
+        class,  In the example given above, the available states
+        are +caution+, +stop+, and +proceed+.
+[Request] A *request* refers to a message (method) sent to the
+          *context*.  In the example given above, the supported
+          requests are +color+ and +cycle+.
+[Handler] A *handler* is a method on a *state* which implements a
+          *request* for that state.  For instance, in the example
+          above, when the +TrafficLight+ is in the +caution+ state,
+          the handler for the request +color+ returns "yellow".
+
+=== Footnotes:
+
+1. Gamma, Erich; Richard Helm, Ralph Johnson, John M. Vlissides (1995). Design Patterns: Elements of Reusable Object-Oriented Software. Addison-Wesley, 395. ISBN 0201633612.
+
+== REQUIREMENTS:
+
+* ActiveSupport
+
+== INSTALL:
+
+* sudo gem install states
+
+== LICENSE:
+
+(The MIT License)
+
+Copyright (c) 2008 Avdi Grimm
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+'Software'), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
