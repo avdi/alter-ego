@@ -17,15 +17,15 @@ module Hookr
         # We must use string evaluation in order to define a method that can
         # receive a block.
         instance_eval(<<-END)
-          def #{name}(&block)
-            add_callback(:#{name}, &block)
+          def #{name}(handle=nil, &block)
+            add_callback(:#{name}, handle, &block)
           end
         END
       end
 
       # Add a callback to a named hook
-      def add_callback(name, &block)
-        hooks[name].add_callback(block)
+      def add_callback(hook_name, handle=nil, &block)
+        hooks[hook_name].add_external_callback(handle, &block)
       end
     end
 
@@ -52,16 +52,74 @@ module Hookr
 
     def initialize(name)
       assert(Symbol === name)
+      @handles = {}
       super(name)
     end
 
     def callbacks
-      (@callbacks ||= [])
+      (@callbacks ||= CallbackSet.new)
     end
 
-    def add_callback(callback)
-      assert_respond_to(callback, :call)
+    def add_external_callback(handle=nil, &block)
+      assert(handle.nil? || Symbol === handle)
+      assert_exists(block)
+      handle ||= callbacks.size
+      callback = ExternalCallback.new(handle, block, callbacks.size)
       callbacks << callback
+      callback.handle
     end
   end
+
+  class CallbackSet < SortedSet
+
+    # Fetch callback by either index or handle
+    def [](index)
+      case index
+      when Integer then detect{|cb| cb.index == index}
+      when Symbol  then detect{|cb| cb.handle == index}
+      else raise ArgumentError, "index must be Integer or Symbol"
+      end
+    end
+
+    # get the first callback
+    def first
+      each do |cb|
+        return cb
+      end
+    end
+  end
+
+  Callback = Struct.new(:handle, :block, :index) do
+    include Comparable
+
+    # Callbacks with the same handle are always equal, which prevents duplicate
+    # handles in CallbackSets.  Otherwise, callbacks are sorted by index.
+    def <=>(other)
+      if handle == other.handle
+        return 0
+      end
+      self.index <=> other.index
+    end
+
+    # Must be overridden in subclass
+    def call(*args)
+      raise NotImplementedError, "Callback is an abstract class"
+    end
+  end
+
+  # A callback which will execute outside the event source
+  class ExternalCallback < Callback
+    def call
+      block.call
+    end
+  end
+
+  # A callback which will execute in the context of the event source
+  class InternalCallback < Callback
+  end
+
+  # A callback which will call a method on the event source
+  class MethodCallback < Callback
+  end
+
 end
