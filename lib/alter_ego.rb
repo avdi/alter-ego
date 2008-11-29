@@ -6,6 +6,7 @@ require 'singleton'
 require 'rubygems'
 require 'activesupport'
 require 'fail_fast'
+require 'hookr'
 
 module AlterEgo
   VERSION = '1.0.0'
@@ -72,6 +73,7 @@ module AlterEgo
   class State
     include FailFast::Assertions
     extend FailFast::Assertions
+    include Hookr::Hooks
 
     def self.transition(options, &trans_action)
       options.assert_valid_keys(:to, :on, :if)
@@ -118,16 +120,6 @@ module AlterEgo
 
     def self.handle(request, method = nil, &block)
       define_contextual_method_from_symbol_or_block(request, method, &block)
-    end
-
-    def self.on_enter(method = nil, &block)
-      assert(method.nil? ^ block.nil?)
-      define_contextual_method_from_symbol_or_block(:on_enter, method, &block)
-    end
-
-    def self.on_exit(method = nil, &block)
-      assert(method.nil? ^ block.nil?)
-      define_contextual_method_from_symbol_or_block(:on_exit, method, &block)
     end
 
     def valid_transitions
@@ -178,11 +170,8 @@ module AlterEgo
 
     protected
 
-    def on_exit(context)
-    end
-
-    def on_enter(context)
-    end
+#     define_hook :on_enter, :params => [ :context ]
+#     define_hook :on_exit,  :params => [ :context ]
 
     private
 
@@ -207,7 +196,7 @@ module AlterEgo
         end
       end
     end
-end
+  end
 
   module ClassMethods
     def state(identifier, options={}, &block)
