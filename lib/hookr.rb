@@ -62,12 +62,41 @@ module Hookr
 
     # Add a callback which will be executed in the context where it was defined
     def add_external_callback(handle=nil, &block)
-      assert(handle.nil? || Symbol === handle)
-      assert_exists(block)
-      handle ||= callbacks.size
-      callback = ExternalCallback.new(handle, block, callbacks.size)
+      add_block_callback(Hookr::ExternalCallback, handle, &block)
+    end
+
+    # Add a callback which will be executed in the context of the event source
+    def add_internal_callback(handle=nil, &block)
+      add_block_callback(Hookr::InternalCallback, handle, &block)
+    end
+
+    # Add a callback which will send the given +message+ to the event source
+    def add_method_callback(klass, message)
+      method = klass.instance_method(message)
+      add_callback(Hookr::MethodCallback.new(message, method, next_callback_index))
+    end
+
+    def add_callback(callback)
       callbacks << callback
       callback.handle
+    end
+
+    def execute_callbacks(source)
+      callbacks.execute(source)
+    end
+
+    private
+
+    def next_callback_index
+      return 0 if callbacks.empty?
+      callbacks.map{|cb| cb.index}.max + 1
+    end
+
+    def add_block_callback(type, handle=nil, &block)
+      assert_exists(block)
+      assert(handle.nil? || Symbol === handle)
+      handle ||= next_callback_index
+      add_callback(type.new(handle, block, next_callback_index))
     end
   end
 
@@ -88,9 +117,15 @@ module Hookr
         return cb
       end
     end
+
+    def execute(source)
+      each do |callback|
+        callback.call(source)
+      end
+    end
   end
 
-  Callback = Struct.new(:handle, :block, :index) do
+  Callback = Struct.new(:handle, :index) do
     include Comparable
 
     # Callbacks with the same handle are always equal, which prevents duplicate
@@ -108,19 +143,42 @@ module Hookr
     end
   end
 
+  # A base class for callbacks which execute a block
+  class BlockCallback < Callback
+    attr_reader :block
+
+    def initialize(handle, block, index)
+      @block = block
+      super(handle, index)
+    end
+  end
+
   # A callback which will execute outside the event source
-  class ExternalCallback < Callback
-    def call
+  class ExternalCallback < BlockCallback
+    def call(source)
       block.call
     end
   end
 
   # A callback which will execute in the context of the event source
-  class InternalCallback < Callback
+  class InternalCallback < BlockCallback
+    def call(source)
+      source.instance_eval(&block)
+    end
   end
 
   # A callback which will call a method on the event source
   class MethodCallback < Callback
+    attr_reader :method
+
+    def initialize(handle, method, index)
+      @method = method
+      super(handle, index)
+    end
+
+    def call(source)
+      method.bind(source).call
+    end
   end
 
 end
