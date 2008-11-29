@@ -196,19 +196,15 @@ describe Hookr::Hook do
 
     specify { @it.should have(0).callbacks }
 
-    describe "when adding an external callback" do
-      before :each do
-        Hookr::ExternalCallback.stub!(:new).and_return(@callback)
-      end
-
+    describe "when adding a callback" do
       it "should return the handle of the added callback" do
-        @it.add_external_callback(&@block).should == 123
+        @it.add_callback(@callback).should == 123
       end
     end
 
     describe "given an anonymous callback" do
       before :each do
-        @it.add_external_callback(&@block)
+        @it.add_callback(@callback)
       end
 
       specify { @it.should have(1).callbacks }
@@ -217,10 +213,8 @@ describe Hookr::Hook do
 
     describe "given a couple anonymous callbacks" do
       before :each do
-        @it.add_external_callback do
-        end
-        @it.add_external_callback do
-        end
+        @it.add_callback(@callback)
+        @it.add_callback(@callback)
       end
 
       specify { @it.should have(2).callbacks }
@@ -234,15 +228,13 @@ describe Hookr::Hook do
 
     describe "given a callback with a handle" do
       before :each do
-        @it.add_external_callback(:my_callback) do
-          @sensor.ping!
-        end
+        @it.add_callback(:my_callback, @callback)
       end
 
       specify { @it.should have(1).callbacks }
 
       specify "the callback should be accessible via the given handle" do
-        @it.callbacks[:my_callback].should be_a_kind_of(Hookr::ExternalCallback)
+        @it.callbacks[:my_callback].should be_a_kind_of(Hookr::Callback)
       end
 
       specify "the callback should execute the given code" do

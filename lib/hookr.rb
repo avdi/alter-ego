@@ -60,6 +60,7 @@ module Hookr
       (@callbacks ||= CallbackSet.new)
     end
 
+    # Add a callback which will be executed in the context where it was defined
     def add_external_callback(handle=nil, &block)
       assert(handle.nil? || Symbol === handle)
       assert_exists(block)
