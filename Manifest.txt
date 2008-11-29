@@ -5,15 +5,11 @@ README.rdoc
 State_Design_Pattern_UML_Class_Diagram.png
 Rakefile
 TODO
-lib/assertions.rb
-spec/assertions_spec.rb
 lib/alter_ego.rb
 script/console
 script/destroy
 script/generate
 spec/spec.opts
 spec/spec_helper.rb
-spec/alter_ego_spec.rb
-lib/alter_ego.rb
 spec/alter_ego_spec.rb
 tasks/rspec.rake

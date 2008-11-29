@@ -1,4 +1,6 @@
-* TODO Factor assertions out into separate library
+# -*- mode: org -*-
+* DONE Factor assertions out into separate library
+  CLOSED: [2008-11-29 Sat 01:29]
 * TODO Remove ActiveSupport dependency
 * TODO Nested state support with history
 * TODO Verify full methods/respond_to? integration

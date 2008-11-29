@@ -1,16 +1,16 @@
 $:.unshift(File.dirname(__FILE__)) unless
   $:.include?(File.dirname(__FILE__)) || $:.include?(File.expand_path(File.dirname(__FILE__)))
 
-require File.join(File.dirname(__FILE__), 'assertions')
 require 'forwardable'
 require 'singleton'
 require 'rubygems'
 require 'activesupport'
+require 'fail_fast'
 
 module AlterEgo
   VERSION = '1.0.0'
 
-  include Assertions
+  include FailFast::Assertions
 
   class StateError < RuntimeError
   end
@@ -70,8 +70,8 @@ module AlterEgo
   end
 
   class State
-    include Assertions
-    extend Assertions
+    include FailFast::Assertions
+    extend FailFast::Assertions
 
     def self.transition(options, &trans_action)
       options.assert_valid_keys(:to, :on, :if)

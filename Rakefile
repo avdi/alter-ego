@@ -8,7 +8,8 @@ $hoe = Hoe.new('alter-ego', AlterEgo::VERSION) do |p|
   p.changes              = p.paragraphs_of("History.txt", 0..1).join("\n\n")
   p.rubyforge_name       = p.name # TODO this is default value
   p.extra_deps         = [
-    ['activesupport','>= 2.0.2'],
+    ['activesupport','>= 2.0.0'],
+    ['fail-fast',    '>= 1.0.0']
   ]
   p.extra_dev_deps = [
     ['newgem', ">= #{::Newgem::VERSION}"]
