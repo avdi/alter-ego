@@ -336,3 +336,56 @@ describe Hookr::Callback, "with handle :cb1 and an index of 1" do
   end
 
 end
+
+describe Hookr::Event do
+  describe "with three arguments" do
+    before :each do
+      @source              = stub("Source")
+      @name                = :on_signal
+      @arguments           = ["arg1", "arg2", "arg3"]
+      @it = Hookr::Event.new(@source,
+                             @name,
+                             @arguments)
+    end
+
+    describe "given an arity of -1" do
+      it "should convert to five arguments" do
+        @it.to_args(-1).should == [@source, @name, *@arguments]
+      end
+    end
+
+    describe "given an arity of 2" do
+      it "should raise an error" do
+        lambda do
+          @it.to_args(2).should == [@source, @name, *@arguments]
+        end.should raise_error
+      end
+    end
+
+    describe "given an arity of 3" do
+      it "should convert to three arguments" do
+        @it.to_args(3).should == @arguments
+      end
+    end
+
+    describe "given an arity of 4" do
+      it "should convert to four arguments" do
+        @it.to_args(4).should == [@name, *@arguments]
+      end
+    end
+
+    describe "given an arity of 5" do
+      it "should convert to four arguments" do
+        @it.to_args(-1).should == [@source, @name, *@arguments]
+      end
+    end
+
+    describe "given an arity of 6" do
+      it "should raise an error" do
+        lambda do
+          @it.to_args(6).should == [@source, @name, *@arguments]
+        end.should raise_error
+      end
+    end
+  end
+end

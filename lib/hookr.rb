@@ -81,6 +81,7 @@ module Hookr
       callback.handle
     end
 
+    # Excute the callbacks in order.  +source+ is the object initiating the event.
     def execute_callbacks(source)
       callbacks.execute(source)
     end
@@ -178,6 +179,36 @@ module Hookr
 
     def call(source)
       method.bind(source).call
+    end
+  end
+
+  # Represents an event triggering callbacks
+  Event = Struct.new(:source, :name, :arguments) do
+    # Convert to arguments for a callback of the given arity
+    def to_args(arity)
+      case arity
+      when -1
+        full_arguments
+      when (min_argument_count..full_argument_count)
+        full_arguments.slice(full_argument_count - arity, arity)
+      else
+        raise ArgumentError, "Arity must be between #{min_argument_count} "\
+                             "and #{full_argument_count}"
+      end
+    end
+
+    private
+
+    def full_argument_count
+      full_arguments.size
+    end
+
+    def min_argument_count
+      arguments.size
+    end
+
+    def full_arguments
+      @full_arguments ||= [source, name, *arguments]
     end
   end
 
