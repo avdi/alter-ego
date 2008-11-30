@@ -425,34 +425,46 @@ describe "a two-param hook named :on_signal" do
   end
 
   describe "given three callbacks" do
+    def log(*args)
+      @log << args
+    end
+
     before :each do
-      @instance.on_signal do |event, arg1, arg2|
-        @sensor.ping(:cb1_before, event.name, arg1, arg2)
+      @log = []
+      @instance.on_signal(:cb1) do |event, arg1, arg2|
+        log(:cb1_before, event.name, arg1, arg2)
         event.next
-        @sensor.ping(:cb1_after, event.name, arg1, arg2)
+        log(:cb1_after, event.name, arg1, arg2)
       end
-      @instance.on_signal do |event, arg1, arg2|
-        @sensor.ping(:cb2_before, event.name, arg1, arg2)
+      @instance.on_signal(:cb2) do |event, arg1, arg2|
+        log(:cb2_before, event.name, arg1, arg2)
         event.next(:pish, :tosh)
-        @sensor.ping(:cb2_after, event.name, arg1, arg2)
+        log(:cb2_after, event.name, arg1, arg2)
       end
-      @instance.on_signal do |event, arg1, arg2|
-        @sensor.ping(:cb3_before, event.name, arg1, arg2)
+      @instance.on_signal(:cb3) do |event, arg1, arg2|
+        log(:cb3_before, event.name, arg1, arg2)
         event.next
-        @sensor.ping(:cb3_after, event.name, arg1, arg2)
+        log(:cb3_after, event.name, arg1, arg2)
       end
     end
 
     it "should be able to execute callbacks recursively" do
-      @sensor.should_receive(:ping).with(:cb3_before, :on_signal, :fizz, :buzz)
-      @sensor.should_receive(:ping).with(:cb2_before, :on_signal, :fizz, :buzz)
-      @sensor.should_receive(:ping).with(:cb1_before, :on_signal, :pish, :tosh)
-      @sensor.should_receive(:ping).with(:cb1_after, :on_signal, :pish, :tosh)
-      @sensor.should_receive(:ping).with(:cb2_after, :on_signal, :fizz, :buzz)
-      @sensor.should_receive(:ping).with(:cb3_after, :on_signal, :fizz, :buzz)
+      @instance.send(:execute_hook, :on_signal, :fizz, :buzz) do |event, arg1, arg2|
+        log(:inner, event.name, arg1, arg2)
+      end
 
-      @instance.send(:execute_hook, :on_signal, :fizz, :buzz)
+      @log.should == [
+       [:cb3_before, :on_signal, :fizz, :buzz],
+       [:cb2_before, :on_signal, :fizz, :buzz],
+       [:cb1_before, :on_signal, :pish, :tosh],
+       [:inner,      :on_signal, :pish, :tosh],
+       [:cb1_after,  :on_signal, :pish, :tosh],
+       [:cb2_after,  :on_signal, :fizz, :buzz],
+       [:cb3_after,  :on_signal, :fizz, :buzz]
+      ]
     end
+
+
   end
 
 end

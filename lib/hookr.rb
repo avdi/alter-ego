@@ -1,9 +1,8 @@
 require 'set'
+require 'generator'
 require 'rubygems'
 require 'fail_fast'
 
-# TODO:
-# * Recursive-style hooks
 module Hookr
 
   # Include this module to decorate your class with hookable goodness.
@@ -109,10 +108,40 @@ module Hookr
       (@hooks ||= self.class.hooks.deep_copy)
     end
 
-    def execute_hook(hook_name, *args)
-      event = Event.new(self, hook_name, args)
+    def execute_hook(hook_name, *args, &block)
+      event = Event.new(self, hook_name, args, !!block)
+
+      if block
+        execute_hook_recursively(hook_name, event, block)
+      else
+        execute_hook_iteratively(hook_name, event)
+      end
+    end
+
+    private
+
+    def execute_hook_recursively(hook_name, event, block)
+      event.callbacks = callback_generator(hook_name, block)
+      event.next
+    end
+
+    def execute_hook_iteratively(hook_name, event)
       hooks[:__wildcard__].execute_callbacks(event)
       hooks[hook_name].execute_callbacks(event)
+    end
+
+    def callback_generator(hook_name, block)
+      Generator.new do |g|
+        hooks[:__wildcard__].callbacks.to_a.reverse.each do |callback|
+          g.yield callback
+        end
+        hooks[hook_name].callbacks.to_a.reverse.each do |callback|
+          g.yield callback
+        end
+        g.yield(lambda do |event|
+                  block.call(event, *event.arguments)
+                end)
+      end
     end
   end
 
@@ -335,7 +364,8 @@ module Hookr
   # +source+::    The object triggering the event.
   # +name+::      The name of the event
   # +arguments+:: Any arguments passed associated with the event
-  Event = Struct.new(:source, :name, :arguments, :recursive) do
+  Event = Struct.new(:source, :name, :arguments, :recursive, :callbacks) do
+    include FailFast::Assertions
 
     # Convert to arguments for a callback of the given arity. Given an event
     # with three arguments, the rules are as follows:
@@ -358,6 +388,18 @@ module Hookr
       else
         raise ArgumentError, "Arity must be between #{min_argument_count} "\
                              "and #{full_argument_count}"
+      end
+    end
+
+    def next(*args)
+      assert(recursive, callbacks)
+      event = self.class.new(source, name, arguments, recursive, callbacks)
+      event.arguments = args unless args.empty?
+      if callbacks.next?
+        next_callback = callbacks.next
+        next_callback.call(event)
+      else
+        raise "No more callbacks!"
       end
     end
 
