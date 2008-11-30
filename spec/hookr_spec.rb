@@ -315,6 +315,27 @@ describe Hookr::Hook do
       @it.total_callbacks.should == 2
     end
   end
+
+  describe "duplicated" do
+    before :each do
+      @callback = stub("Callback", :handle => :foo)
+      @parent = Hookr::Hook.new(:parent)
+      @parent.add_callback(@callback)
+      @child  = @parent.dup
+    end
+
+    it "should have the original as its parent" do
+      @child.parent.should equal(@parent)
+    end
+
+    it "should have no callbacks of its own" do
+      @child.should have(0).callbacks
+    end
+
+    specify "parent should still have a callback" do
+      @parent.should have(1).callbacks
+    end
+  end
 end
 
 describe Hookr::CallbackSet do

@@ -56,6 +56,12 @@ module Hookr
       super(name, parent || NullHook.new)
     end
 
+    def initialize_copy(original)
+      self.name = original.name
+      self.parent = original
+      @callbacks = CallbackSet.new
+    end
+
     def ==(other)
       name == other.name
     end
@@ -119,6 +125,7 @@ module Hookr
     end
   end
 
+  # A null object class for terminating Hook inheritance chains
   class NullHook
     def execute_callbacks(event)
       # NOOP
