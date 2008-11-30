@@ -3,7 +3,6 @@ require 'rubygems'
 require 'fail_fast'
 
 # TODO:
-# * Macro defines internal, external, or method callback based on arguments
 # * Parameterized hooks
 # * Method(s) for firing events
 # * Handle-based callback removal
@@ -28,19 +27,38 @@ module Hookr
         # We must use string evaluation in order to define a method that can
         # receive a block.
         instance_eval(<<-END)
-          def #{name}(handle=nil, &block)
-            add_callback(:#{name}, handle, &block)
+          def #{name}(handle_or_method=nil, &block)
+            add_callback(:#{name}, handle_or_method, &block)
           end
         END
       end
 
       # Add a callback to a named hook
-      def add_callback(hook_name, handle=nil, &block)
-        hooks[hook_name].add_external_callback(handle, &block)
+      def add_callback(hook_name, handle_or_method=nil, &block)
+        if block
+          add_block_callback(hook_name, handle_or_method, block)
+        else
+          add_method_callback(hook_name, handle_or_method)
+        end
       end
 
       def inherited(child)
         child.instance_variable_set(:@hooks, hooks.deep_copy)
+      end
+
+      private
+
+      def add_block_callback(hook_name, handle, block)
+        case block.arity
+        when -1, 0
+          hooks[hook_name].add_internal_callback(handle, &block)
+        else
+          hooks[hook_name].add_external_callback(handle, &block)
+        end
+      end
+
+      def add_method_callback(hook_name, method)
+        hooks[hook_name].add_method_callback(self, method)
       end
     end                         # ClassMethods
 
@@ -61,7 +79,7 @@ module Hookr
 
   class HookSet < Set
     def [](key)
-      detect {|v| v.name == key}
+      detect {|v| v.name == key} or raise IndexError, "No such hook: #{key}"
     end
 
     def deep_copy

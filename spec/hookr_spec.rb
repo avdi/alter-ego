@@ -121,7 +121,7 @@ describe "a no-param hook named :on_signal" do
     @instance2     = @class.new
     @class_hook    = @class.hooks[:on_signal]
     @instance_hook = @instance.hooks[:on_signal]
-    @event         = stub("Event", :to_args => [])
+    @event         = stub("Event", :to_args => [], :source => @instance)
   end
 
   it "should have no callbacks at the class level" do
@@ -223,11 +223,16 @@ describe "a two-param hook named :on_signal" do
           sensor.ping(source, event_name, color, flavor)
         end
       end
+      @callback = @class_hook.callbacks[0]
     end
 
     it "should call back with the correct arguments" do
       @sensor.should_receive(:ping).with(@instance, :on_signal, :purple, :grape)
       @instance.send(:execute_hook, :on_signal, :purple, :grape)
+    end
+
+    specify "the callback should be an external callback" do
+      @callback.should be_a_kind_of(Hookr::ExternalCallback)
     end
   end
 
@@ -236,7 +241,7 @@ describe "a two-param hook named :on_signal" do
       sensor = @sensor
     end
 
-    it "raise an exception" do
+    it "should raise an exception" do
       lambda do
         @class.instance_eval do
           on_signal do |flavor|
@@ -245,6 +250,63 @@ describe "a two-param hook named :on_signal" do
       end.should raise_error(ArgumentError)
     end
   end
+
+  describe "given an implicit no-arg callback" do
+    before :each do
+      @class.instance_eval do
+        on_signal do
+          # yadda yadda
+        end
+      end
+      @callback = @class_hook.callbacks[0]
+    end
+
+    specify "the callback should be an internal callback" do
+      @callback.should be_a_kind_of(Hookr::InternalCallback)
+    end
+  end
+
+  describe "given an explicit no-arg callback" do
+    before :each do
+      @class.instance_eval do ||
+        on_signal do
+          # yadda yadda
+        end
+      end
+      @callback = @class_hook.callbacks[0]
+    end
+
+    specify "the callback should be an internal callback" do
+      @callback.should be_a_kind_of(Hookr::InternalCallback)
+    end
+  end
+
+  describe "given a method callback :do_stuff" do
+    before :each do
+      sensor = @sensor
+      @class.instance_eval do
+        define_method :do_stuff do
+          sensor.ping(:do_stuff)
+        end
+        on_signal :do_stuff
+      end
+      @callback = @class_hook.callbacks[0]
+    end
+
+    specify "the callback should be a method callback" do
+      @callback.should be_a_kind_of(Hookr::MethodCallback)
+    end
+
+    specify "executing the callback should execute :do_stuff" do
+      @sensor.should_receive(:ping).with(:do_stuff)
+      @instance.send(:execute_hook, :on_signal)
+    end
+
+    specify "the callback handle should be :do_stuff" do
+      @callback.handle.should == :do_stuff
+    end
+  end
+
 end
 
 describe Hookr::Hook do
