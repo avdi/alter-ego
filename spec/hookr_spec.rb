@@ -217,6 +217,7 @@ describe "a two-param hook named :on_signal" do
 
   describe "given a four-arg callback" do
     before :each do
+      sensor = @sensor
       @class.instance_eval do
         on_signal do |source, event_name, color, flavor|
           sensor.ping(source, event_name, color, flavor)
@@ -227,6 +228,21 @@ describe "a two-param hook named :on_signal" do
     it "should call back with the correct arguments" do
       @sensor.should_receive(:ping).with(@instance, :on_signal, :purple, :grape)
       @instance.send(:execute_hook, :on_signal, :purple, :grape)
+    end
+  end
+
+  describe "given a one-arg callback" do
+    before :each do
+      sensor = @sensor
+    end
+
+    it "raise an exception" do
+      lambda do
+        @class.instance_eval do
+          on_signal do |flavor|
+          end
+        end
+      end.should raise_error(ArgumentError)
     end
   end
 end

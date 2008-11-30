@@ -3,6 +3,7 @@ require 'rubygems'
 require 'fail_fast'
 
 # TODO:
+# * Macro defines internal, external, or method callback based on arguments
 # * Parameterized hooks
 # * Method(s) for firing events
 # * Handle-based callback removal
@@ -21,8 +22,8 @@ module Hookr
       end
 
       # Define a new hook +name+
-      def define_hook(name)
-        hooks << Hook.new(name)
+      def define_hook(name, *params)
+        hooks << Hook.new(name, nil, params)
 
         # We must use string evaluation in order to define a method that can
         # receive a block.
@@ -51,6 +52,11 @@ module Hookr
     def hooks
       (@hooks ||= self.class.hooks.deep_copy)
     end
+
+    def execute_hook(hook_name, *args)
+      event = Event.new(self, hook_name, args)
+      hooks[hook_name].execute_callbacks(event)
+    end
   end
 
   class HookSet < Set
@@ -68,13 +74,13 @@ module Hookr
   end
 
   # A single named hook
-  Hook = Struct.new(:name, :parent) do
+  Hook = Struct.new(:name, :parent, :params) do
     include FailFast::Assertions
 
-    def initialize(name, parent=nil)
+    def initialize(name, parent=nil, params=[])
       assert(Symbol === name)
       @handles = {}
-      super(name, parent || NullHook.new)
+      super(name, parent || NullHook.new, params)
     end
 
     def initialize_copy(original)
@@ -101,6 +107,9 @@ module Hookr
 
     # Add a callback which will be executed in the context where it was defined
     def add_external_callback(handle=nil, &block)
+      if block.arity > -1 && block.arity < params.size
+        raise ArgumentError, "Callback has incompatible arity"
+      end
       add_block_callback(Hookr::ExternalCallback, handle, &block)
     end
 
