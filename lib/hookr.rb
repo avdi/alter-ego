@@ -3,12 +3,10 @@ require 'rubygems'
 require 'fail_fast'
 
 # TODO:
-# * Handle-based callback removal
 # * Recursive-style hooks
-# * Global callbacks
 module Hookr
 
-  # Include this module to decorate your class with hookable goodness
+  # Include this module to decorate your class with hookable goodness.
   #
   # Note: remember to call super() if you define your own self.inherited().
   module Hooks
@@ -29,7 +27,32 @@ module Hookr
             add_callback(:#{name}, handle_or_method, &block)
           end
         END
+        module_eval(<<-END)
+          def #{name}(handle=nil, &block)
+            add_external_callback(:#{name}, handle, block)
+          end
+        END
       end
+
+      protected
+
+      private
+
+      def inherited(child)
+        child.instance_variable_set(:@hooks, hooks.deep_copy)
+      end
+
+    end                         # ClassMethods
+
+    # These methods are used at both the class and instance level
+    module CallbackHelpers
+      public
+
+      def remove_callback(hook_name, handle_or_index)
+        hooks[hook_name].remove_callback(handle_or_index)
+      end
+
+      protected
 
       # Add a callback to a named hook
       def add_callback(hook_name, handle_or_method=nil, &block)
@@ -40,28 +63,45 @@ module Hookr
         end
       end
 
-      def inherited(child)
-        child.instance_variable_set(:@hooks, hooks.deep_copy)
+      # Add a callback which will be executed
+      def add_wildcard_callback(handle=nil, &block)
+        hooks[:__wildcard__].add_external_callback(handle, &block)
+      end
+
+      # Remove a wildcard callback
+      def remove_wildcard_callback(handle_or_index)
+        remove_callback(:__wildcard__, handle_or_index)
       end
 
       private
 
+      # Add either an internal or external callback depending on the arity of
+      # the given +block+
       def add_block_callback(hook_name, handle, block)
         case block.arity
         when -1, 0
           hooks[hook_name].add_internal_callback(handle, &block)
         else
-          hooks[hook_name].add_external_callback(handle, &block)
+          add_external_callback(hook_name, handle, block)
         end
       end
 
+      # Add a callback which will be executed in the context from which it was defined
+      def add_external_callback(hook_name, handle, block)
+        hooks[hook_name].add_external_callback(handle, &block)
+      end
+
+      # Add a callback which will call an instance method of the source class
       def add_method_callback(hook_name, method)
         hooks[hook_name].add_method_callback(self, method)
       end
-    end                         # ClassMethods
+    end
 
     def self.included(other)
       other.extend(ClassMethods)
+      other.extend(CallbackHelpers)
+      other.send(:include, CallbackHelpers)
+      other.send(:define_hook, :__wildcard__)
     end
 
     # returns the hooks exposed by this object
@@ -71,21 +111,8 @@ module Hookr
 
     def execute_hook(hook_name, *args)
       event = Event.new(self, hook_name, args)
+      hooks[:__wildcard__].execute_callbacks(event)
       hooks[hook_name].execute_callbacks(event)
-    end
-  end
-
-  class HookSet < Set
-    def [](key)
-      detect {|v| v.name == key} or raise IndexError, "No such hook: #{key}"
-    end
-
-    def deep_copy
-      result = HookSet.new
-      each do |hook|
-        result << hook.dup
-      end
-      result
     end
   end
 
@@ -100,9 +127,10 @@ module Hookr
     end
 
     def initialize_copy(original)
-      self.name = original.name
+      self.name   = original.name
       self.parent = original
-      @callbacks = CallbackSet.new
+      self.params = original.params
+      @callbacks  = CallbackSet.new
     end
 
     def ==(other)
@@ -145,6 +173,14 @@ module Hookr
       callback.handle
     end
 
+    def remove_callback(handle_or_index)
+      case handle_or_index
+      when Symbol then callbacks.delete_if{|cb| cb.handle == handle_or_index}
+      when Integer then callbacks.delete_if{|cb| cb.index == handle_or_index}
+      else raise ArgumentError, "Key must be integer index or symbolic handle"
+      end
+    end
+
     # Excute the callbacks in order.  +source+ is the object initiating the event.
     def execute_callbacks(event)
       parent.execute_callbacks(event)
@@ -179,6 +215,31 @@ module Hookr
 
     def total_callbacks
       0
+    end
+  end
+
+  class HookSet < Set
+    WILDCARD_HOOK = Hookr::Hook.new(:__wildcard__)
+
+    def [](key)
+      detect {|v| v.name == key} or raise IndexError, "No such hook: #{key}"
+    end
+
+    def deep_copy
+      result = HookSet.new
+      each do |hook|
+        result << hook.dup
+      end
+      result
+    end
+
+    # Length minus the wildcard hook (if any)
+    def length
+      if include?(WILDCARD_HOOK)
+        super - 1
+      else
+        super
+      end
     end
   end
 

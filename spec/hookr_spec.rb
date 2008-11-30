@@ -99,6 +99,36 @@ describe Hookr::Hooks do
         @class.hooks[:bar].should be_a_kind_of(Hookr::Hook)
       end
 
+      describe "given a wildcard callback" do
+        before :each do
+          @sensor = stub("Sensor")
+          sensor = @sensor
+          @class.instance_eval do
+            add_wildcard_callback :joker do |source, event|
+              sensor.ping(source, event)
+            end
+          end
+          @it = @class.new
+        end
+
+        it "should call back for both hooks" do
+          @sensor.should_receive(:ping).with(@it, :foo)
+          @sensor.should_receive(:ping).with(@it, :bar)
+          @it.send(:execute_hook, :foo)
+          @it.send(:execute_hook, :bar)
+        end
+
+        it "should be able to remove the callback" do
+          @it.instance_eval do
+            remove_wildcard_callback(:joker)
+          end
+          @sensor.should_not_receive(:ping).with(:foo)
+          @sensor.should_not_receive(:ping).with(:bar)
+          @it.send(:execute_hook, :foo)
+          @it.send(:execute_hook, :bar)
+        end
+      end
+
       describe "and instantiated" do
         before :each do
           @it = @class.new
@@ -264,6 +294,7 @@ describe "a two-param hook named :on_signal" do
     specify "the callback should be an internal callback" do
       @callback.should be_a_kind_of(Hookr::InternalCallback)
     end
+
   end
 
   describe "given an explicit no-arg callback" do
@@ -317,8 +348,70 @@ describe "a two-param hook named :on_signal" do
     end
 
     specify "the callback should be removable" do
-      @class_hook.remove_callback(:my_callback)
+      @class.send(:remove_callback, :on_signal, :my_callback)
       @class_hook.should have(0).callbacks
+    end
+  end
+
+  describe "given an anonymous instance-level callback" do
+    before :each do
+      @instance.on_signal do |source, event, arg1, arg2|
+        @sensor.ping(source, event, arg1, arg2)
+      end
+    end
+
+    specify "the instance should have 1 callback" do
+      @instance_hook.should have(1).callbacks
+    end
+
+    specify "the callback should be external" do
+      @instance_hook.callbacks[0].should be_a_kind_of(Hookr::ExternalCallback)
+    end
+
+    specify "the callback should call back" do
+      @sensor.should_receive(:ping).with(@instance, :on_signal, :apple, :orange)
+      @instance.send(:execute_hook, :on_signal, :apple, :orange)
+    end
+
+    specify "the callback should be removable" do
+      @instance.remove_callback(:on_signal, 0)
+      @instance_hook.should have(0).callbacks
+    end
+  end
+
+  describe "given a named instance-level callback" do
+    before :each do
+      @instance.on_signal :xyzzy do |source, event, arg1, arg2|
+        @sensor.ping(source, event, arg1, arg2)
+      end
+    end
+
+    specify "the callback should be removable" do
+      @instance.remove_callback(:on_signal, :xyzzy)
+      @instance_hook.should have(0).callbacks
+    end
+
+  end
+
+  describe "given an instance-level internal callback" do
+    before :each do
+      sensor = @sensor
+      @class.module_eval do
+        private
+        define_method :secret do
+          sensor.ping
+        end
+      end
+      @instance.instance_eval do
+        add_callback(:on_signal) do
+          secret
+        end
+      end
+    end
+
+    specify "the callback should call back in the instance context" do
+      @sensor.should_receive(:ping)
+      @instance.send(:execute_hook, :on_signal)
     end
   end
 
