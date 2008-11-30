@@ -335,22 +335,20 @@ module Hookr
   # +source+::    The object triggering the event.
   # +name+::      The name of the event
   # +arguments+:: Any arguments passed associated with the event
-  Event = Struct.new(:source, :name, :arguments) do
+  Event = Struct.new(:source, :name, :arguments, :recursive) do
 
     # Convert to arguments for a callback of the given arity. Given an event
     # with three arguments, the rules are as follows:
     #
-    # 1. If arity is -1 (meaning any number of arguments), or 5, the result will
-    #    be [+source+, +name+, +arguments[0]+, +arguments[1]+, +arguments[2]+]
-    # 2. If arity is 4, the result will be [+name+, +arguments[1]+, +arguments[2]+,
-    #    +arguments[3]+]
-    # 3. If arity is 3, the result will just be +arguments+
-    # 4. If arity is < 3, an error will be raised.
+    # 1. If arity is -1 (meaning any number of arguments), or 4, the result will
+    #    be [event, +arguments[0]+, +arguments[1]+, +arguments[2]+]
+    # 2. If arity is 3, the result will just be +arguments+
+    # 3. If arity is < 3, an error will be raised.
     #
-    # Notice that as the arity is reduced, first the source and then the event
-    # name are trimmed off.  However, it is not permitted to generate a subset
-    # of the +arguments+ list.  If the arity is too small to allow all arguments
-    # to be passed, the method fails.
+    # Notice that as the arity is reduced, the event argument is trimmed off.
+    # However, it is not permitted to generate a subset of the +arguments+ list.
+    # If the arity is too small to allow all arguments to be passed, the method
+    # fails.
     def to_args(arity)
       case arity
       when -1
@@ -374,7 +372,7 @@ module Hookr
     end
 
     def full_arguments
-      @full_arguments ||= [source, name, *arguments]
+      @full_arguments ||= [self, *arguments]
     end
   end
 

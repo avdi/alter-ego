@@ -104,16 +104,15 @@ describe Hookr::Hooks do
           @sensor = stub("Sensor")
           sensor = @sensor
           @class.instance_eval do
-            add_wildcard_callback :joker do |source, event|
-              sensor.ping(source, event)
+            add_wildcard_callback :joker do |event|
+              sensor.ping(event)
             end
           end
           @it = @class.new
         end
 
         it "should call back for both hooks" do
-          @sensor.should_receive(:ping).with(@it, :foo)
-          @sensor.should_receive(:ping).with(@it, :bar)
+          @sensor.should_receive(:ping).twice
           @it.send(:execute_hook, :foo)
           @it.send(:execute_hook, :bar)
         end
@@ -249,15 +248,20 @@ describe "a two-param hook named :on_signal" do
     before :each do
       sensor = @sensor
       @class.instance_eval do
-        on_signal do |source, event_name, color, flavor|
-          sensor.ping(source, event_name, color, flavor)
+        on_signal do |event, color, flavor|
+          sensor.ping(event, color, flavor)
         end
       end
       @callback = @class_hook.callbacks[0]
     end
 
     it "should call back with the correct arguments" do
-      @sensor.should_receive(:ping).with(@instance, :on_signal, :purple, :grape)
+      @sensor.should_receive(:ping) do |event, color, flavor|
+        event.source.should equal(@instance)
+        event.name.should == :on_signal
+        color.should == :purple
+        flavor.should == :grape
+      end
       @instance.send(:execute_hook, :on_signal, :purple, :grape)
     end
 
@@ -355,8 +359,8 @@ describe "a two-param hook named :on_signal" do
 
   describe "given an anonymous instance-level callback" do
     before :each do
-      @instance.on_signal do |source, event, arg1, arg2|
-        @sensor.ping(source, event, arg1, arg2)
+      @instance.on_signal do |event, arg1, arg2|
+        @sensor.ping(event, arg1, arg2)
       end
     end
 
@@ -369,7 +373,12 @@ describe "a two-param hook named :on_signal" do
     end
 
     specify "the callback should call back" do
-      @sensor.should_receive(:ping).with(@instance, :on_signal, :apple, :orange)
+      @sensor.should_receive(:ping) do |event, arg1, arg2|
+        event.source.should == @instance
+        event.name.should == :on_signal
+        arg1.should == :apple
+        arg2.should == :orange
+      end
       @instance.send(:execute_hook, :on_signal, :apple, :orange)
     end
 
@@ -381,8 +390,8 @@ describe "a two-param hook named :on_signal" do
 
   describe "given a named instance-level callback" do
     before :each do
-      @instance.on_signal :xyzzy do |source, event, arg1, arg2|
-        @sensor.ping(source, event, arg1, arg2)
+      @instance.on_signal :xyzzy do |event, arg1, arg2|
+        @sensor.ping(event, arg1, arg2)
       end
     end
 
@@ -757,15 +766,15 @@ describe Hookr::Event do
     end
 
     describe "given an arity of -1" do
-      it "should convert to five arguments" do
-        @it.to_args(-1).should == [@source, @name, *@arguments]
+      it "should convert to four arguments" do
+        @it.to_args(-1).should == [@it, *@arguments]
       end
     end
 
     describe "given an arity of 2" do
       it "should raise an error" do
         lambda do
-          @it.to_args(2).should == [@source, @name, *@arguments]
+          @it.to_args(2)
         end.should raise_error
       end
     end
@@ -778,20 +787,14 @@ describe Hookr::Event do
 
     describe "given an arity of 4" do
       it "should convert to four arguments" do
-        @it.to_args(4).should == [@name, *@arguments]
+        @it.to_args(4).should == [@it, *@arguments]
       end
     end
 
     describe "given an arity of 5" do
-      it "should convert to four arguments" do
-        @it.to_args(-1).should == [@source, @name, *@arguments]
-      end
-    end
-
-    describe "given an arity of 6" do
       it "should raise an error" do
         lambda do
-          @it.to_args(6).should == [@source, @name, *@arguments]
+          @it.to_args(5)
         end.should raise_error
       end
     end
