@@ -205,6 +205,13 @@ describe Hookr::Hook do
 
     specify { @it.should have(0).callbacks }
 
+    it "should be equal to any other hook named :foo" do
+      @parent = Hookr::Hook.new(:parent)
+      @other = Hookr::Hook.new(:foo, @parent)
+      @it.should == @other
+      @it.should eql(@other)
+    end
+
     describe "when adding a callback" do
       it "should return the handle of the added callback" do
         @it.add_callback(@callback).should == 123
@@ -270,6 +277,42 @@ describe Hookr::Hook do
 
         @it.execute_callbacks(@event)
       end
+    end
+  end
+
+  describe "with no parent given" do
+    before :each do
+      @it = Hookr::Hook.new(:root_hook)
+    end
+
+    it "should have a null parent" do
+      @it.parent.should be_a_kind_of(Hookr::NullHook)
+    end
+  end
+
+  describe "given a parent" do
+    before :each do
+      @event           = stub("Event")
+      @parent_callback = stub("Parent callback", :handle => :parent)
+      @child_callback  = stub("Child callback", :handle => :child)
+      @parent = Hookr::Hook.new(:parent_hook)
+      @parent.add_callback(@parent_callback)
+      @it = Hookr::Hook.new(:child_hook, @parent)
+      @it.add_callback(@child_callback)
+    end
+
+    it "should have a parent" do
+      @it.parent.should equal(@parent)
+    end
+
+    it "should call parent callbacks before calling own callbacks" do
+      @parent_callback.should_receive(:call).with(@event)
+      @child_callback.should_receive(:call).with(@event)
+      @it.execute_callbacks(@event)
+    end
+
+    it "should report 2 total callbacks" do
+      @it.total_callbacks.should == 2
     end
   end
 end
@@ -408,6 +451,7 @@ describe "Callbacks: " do
     describe "with a no-param method" do
       before :each do
         @method = stub("Method", :arity => 0, :call => nil)
+        @bound_method = stub("Bound Method", :call => nil)
         @it = Hookr::MethodCallback.new(@handle, @method, @index)
       end
 
@@ -422,6 +466,7 @@ describe "Callbacks: " do
     describe "with a two-param block" do
       before :each do
         @method = stub("Method", :arity => 2, :call => nil)
+        @bound_method = stub("Bound Method", :call => nil)
         @it = Hookr::MethodCallback.new(@handle, @method, @index)
       end
 

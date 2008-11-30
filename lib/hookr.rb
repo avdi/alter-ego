@@ -47,13 +47,25 @@ module Hookr
   end
 
   # A single named hook
-  Hook = Struct.new(:name) do
+  Hook = Struct.new(:name, :parent) do
     include FailFast::Assertions
 
-    def initialize(name)
+    def initialize(name, parent=nil)
       assert(Symbol === name)
       @handles = {}
-      super(name)
+      super(name, parent || NullHook.new)
+    end
+
+    def ==(other)
+      name == other.name
+    end
+
+    def eql?(other)
+      self.class == other.class && name == other.name
+    end
+
+    def hash
+      name.hash
     end
 
     def callbacks
@@ -82,8 +94,14 @@ module Hookr
     end
 
     # Excute the callbacks in order.  +source+ is the object initiating the event.
-    def execute_callbacks(source)
-      callbacks.execute(source)
+    def execute_callbacks(event)
+      parent.execute_callbacks(event)
+      callbacks.execute(event)
+    end
+
+    # Callback count including parents
+    def total_callbacks
+      callbacks.size + parent.total_callbacks
     end
 
     private
@@ -98,6 +116,16 @@ module Hookr
       assert(handle.nil? || Symbol === handle)
       handle ||= next_callback_index
       add_callback(type.new(handle, block, next_callback_index))
+    end
+  end
+
+  class NullHook
+    def execute_callbacks(event)
+      # NOOP
+    end
+
+    def total_callbacks
+      0
     end
   end
 
@@ -119,9 +147,9 @@ module Hookr
       end
     end
 
-    def execute(source)
+    def execute(event)
       each do |callback|
-        callback.call(source)
+        callback.call(event)
       end
     end
   end
@@ -188,10 +216,27 @@ module Hookr
     end
   end
 
-  # Represents an event triggering callbacks
+  # Represents an event which is triggering callbacks.
+  #
+  # +source+::    The object triggering the event.
+  # +name+::      The name of the event
+  # +arguments+:: Any arguments passed associated with the event
   Event = Struct.new(:source, :name, :arguments) do
 
-    # Convert to arguments for a callback of the given arity
+    # Convert to arguments for a callback of the given arity. Given an event
+    # with three arguments, the rules are as follows:
+    #
+    # 1. If arity is -1 (meaning any number of arguments), or 5, the result will
+    #    be [+source+, +name+, +arguments[0]+, +arguments[1]+, +arguments[2]+]
+    # 2. If arity is 4, the result will be [+name+, +arguments[1]+, +arguments[2]+,
+    #    +arguments[3]+]
+    # 3. If arity is 3, the result will just be +arguments+
+    # 4. If arity is < 3, an error will be raised.
+    #
+    # Notice that as the arity is reduced, first the source and then the event
+    # name are trimmed off.  However, it is not permitted to generate a subset
+    # of the +arguments+ list.  If the arity is too small to allow all arguments
+    # to be passed, the method fails.
     def to_args(arity)
       case arity
       when -1
