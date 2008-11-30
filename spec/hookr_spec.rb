@@ -334,7 +334,31 @@ describe Hookr::Callback, "with handle :cb1 and an index of 1" do
     @other = Hookr::Callback.new(:cb1, 2)
     (@it <=> @other).should == 0
   end
+end
 
+describe Hook::BlockCallback do
+  before :each do
+    @handle = :foo
+    @sensor = stub("Sensor")
+    @index  = 1
+    @source = stub("Source")
+    @name   = :we_get_signal!
+    @arguments = []
+    @event = stub("Event")
+  end
+
+  describe "with a no-param block" do
+    before :each do
+      @block = stub("Block", :arity => 0, :call => nil)
+      @it = Hookr::BlockCallback.new(@handle, @block, @index)
+    end
+
+    it "should take 0 args from event and call block with no args" do
+      @event.should_receive(:to_args).with(0).and_return([])
+      @block.should_receive(:call).with(nothing)
+      @it.call(@event)
+    end
+  end
 end
 
 describe Hookr::Event do

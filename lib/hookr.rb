@@ -184,6 +184,7 @@ module Hookr
 
   # Represents an event triggering callbacks
   Event = Struct.new(:source, :name, :arguments) do
+
     # Convert to arguments for a callback of the given arity
     def to_args(arity)
       case arity
