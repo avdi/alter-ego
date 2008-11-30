@@ -128,6 +128,7 @@ module Hookr
 
   Callback = Struct.new(:handle, :index) do
     include Comparable
+    include FailFast::Assertions
 
     # Callbacks with the same handle are always equal, which prevents duplicate
     # handles in CallbackSets.  Otherwise, callbacks are sorted by index.
@@ -156,15 +157,20 @@ module Hookr
 
   # A callback which will execute outside the event source
   class ExternalCallback < BlockCallback
-    def call(source)
-      block.call
+    def call(event)
+      block.call(*event.to_args(block.arity))
     end
   end
 
   # A callback which will execute in the context of the event source
   class InternalCallback < BlockCallback
-    def call(source)
-      source.instance_eval(&block)
+    def initialize(handle, block, index)
+      assert(block.arity <= 0)
+      super(handle, block, index)
+    end
+
+    def call(event)
+      event.source.instance_eval(&block)
     end
   end
 
@@ -177,8 +183,8 @@ module Hookr
       super(handle, index)
     end
 
-    def call(source)
-      method.bind(source).call
+    def call(event)
+      method.bind(event.source).call(*event.to_args(method.arity))
     end
   end
 

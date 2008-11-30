@@ -103,6 +103,7 @@ describe "a no-param hook named :on_signal" do
     @instance2     = @class.new
     @class_hook    = @class.hooks[:on_signal]
     @instance_hook = @instance.hooks[:on_signal]
+    @event         = stub("Event", :to_args => [])
   end
 
   it "should have no callbacks at the class level" do
@@ -164,11 +165,11 @@ describe "a no-param hook named :on_signal" do
     end
 
     specify ":callback1 should execute the given code" do
-      @class_hook.callbacks[:callback1].call(@source).should == 2
+      @class_hook.callbacks[:callback1].call(@event).should == 2
     end
 
     specify ":callback2 should execute the given code" do
-      @class_hook.callbacks[:callback2].call(@source).should == 4
+      @class_hook.callbacks[:callback2].call(@event).should == 4
     end
   end
 end
@@ -184,6 +185,7 @@ describe Hookr::Hook do
       end
     end
     @source = @source_class.new
+    @event  = stub("Event", :source => @source, :to_args => [])
   end
 
   it "should require name to be a symbol" do
@@ -227,10 +229,10 @@ describe Hookr::Hook do
         @named_external_cb = @it.add_external_callback(:my_external) do
           @sensor.ping(:named_external)
         end
-        @anon_internal_cb  = @it.add_internal_callback do
+        @anon_internal_cb  = @it.add_internal_callback do ||
           sensor.ping(:anon_internal)
         end
-        @named_internal_cb = @it.add_internal_callback(:my_internal) do
+        @named_internal_cb = @it.add_internal_callback(:my_internal) do ||
           sensor.ping(:named_internal)
         end
         @method_cb = @it.add_method_callback(@source_class, :my_method)
@@ -266,7 +268,7 @@ describe Hookr::Hook do
         @sensor.should_receive(:ping).with(:named_internal).ordered
         @sensor.should_receive(:ping).with(:my_method).ordered
 
-        @it.execute_callbacks(@source)
+        @it.execute_callbacks(@event)
       end
     end
   end
@@ -336,7 +338,7 @@ describe Hookr::Callback, "with handle :cb1 and an index of 1" do
   end
 end
 
-describe Hook::BlockCallback do
+describe "Callbacks: " do
   before :each do
     @handle = :foo
     @sensor = stub("Sensor")
@@ -344,21 +346,94 @@ describe Hook::BlockCallback do
     @source = stub("Source")
     @name   = :we_get_signal!
     @arguments = []
-    @event = stub("Event")
+    @event = stub("Event", :source => @source)
   end
 
-  describe "with a no-param block" do
-    before :each do
-      @block = stub("Block", :arity => 0, :call => nil)
-      @it = Hookr::BlockCallback.new(@handle, @block, @index)
+  describe Hookr::ExternalCallback do
+    describe "with a no-param block" do
+      before :each do
+        @block = stub("Block", :arity => 0, :call => nil)
+        @it = Hookr::ExternalCallback.new(@handle, @block, @index)
+      end
+
+      it "should take 0 args from event and call block with no args" do
+        @event.should_receive(:to_args).with(0).and_return([])
+        @block.should_receive(:call).with()
+        @it.call(@event)
+      end
     end
 
-    it "should take 0 args from event and call block with no args" do
-      @event.should_receive(:to_args).with(0).and_return([])
-      @block.should_receive(:call).with(nothing)
-      @it.call(@event)
+    describe "with a two-param block" do
+      before :each do
+        @block = stub("Block", :arity => 2, :call => nil)
+        @it = Hookr::ExternalCallback.new(@handle, @block, @index)
+      end
+
+      it "should take 2 args from event and call block with 2 args" do
+        @event.should_receive(:to_args).with(2).and_return([:a, :b])
+        @block.should_receive(:call).with(:a, :b)
+        @it.call(@event)
+      end
     end
   end
+
+  describe Hookr::InternalCallback do
+    describe "with a no-param block" do
+      before :each do
+        source = @source
+        @block = lambda do
+          source.ping
+        end
+        @it = Hookr::InternalCallback.new(@handle, @block, @index)
+      end
+
+      it "should instance eval the block on the event source" do
+        @source.should_receive(:instance_eval).and_yield
+        @source.should_receive(:ping)
+        @it.call(@event)
+      end
+    end
+
+    describe "with a one-param block" do
+      it "should raise error" do
+        @block = stub("Block", :arity => 1, :call => nil)
+        lambda do
+          @it = Hookr::InternalCallback.new(@handle, @block, @index)
+        end.should raise_error
+      end
+    end
+  end
+
+  describe Hookr::MethodCallback do
+    describe "with a no-param method" do
+      before :each do
+        @method = stub("Method", :arity => 0, :call => nil)
+        @it = Hookr::MethodCallback.new(@handle, @method, @index)
+      end
+
+      it "should take 0 args from event and call method with no args" do
+        @event.should_receive(:to_args).with(0).and_return([])
+        @method.should_receive(:bind).with(@source).and_return(@bound_method)
+        @bound_method.should_receive(:call).with()
+        @it.call(@event)
+      end
+    end
+
+    describe "with a two-param block" do
+      before :each do
+        @method = stub("Method", :arity => 2, :call => nil)
+        @it = Hookr::MethodCallback.new(@handle, @method, @index)
+      end
+
+      it "should take 2 args from event and call method with 2 args" do
+        @event.should_receive(:to_args).with(2).and_return([:a, :b])
+        @method.should_receive(:bind).with(@source).and_return(@bound_method)
+        @bound_method.should_receive(:call).with(:a, :b)
+        @it.call(@event)
+      end
+    end
+  end
+
 end
 
 describe Hookr::Event do
