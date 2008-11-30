@@ -200,6 +200,37 @@ describe "a no-param hook named :on_signal" do
   end
 end
 
+describe "a two-param hook named :on_signal" do
+  before :each do
+    @class = Class.new
+    @class.instance_eval do
+      include Hookr::Hooks
+      define_hook :on_signal, :color, :flavor
+    end
+    @instance      = @class.new
+    @instance2     = @class.new
+    @class_hook    = @class.hooks[:on_signal]
+    @instance_hook = @instance.hooks[:on_signal]
+    @event         = stub("Event", :to_args => [])
+    @sensor        = stub("Sensor")
+  end
+
+  describe "given a four-arg callback" do
+    before :each do
+      @class.instance_eval do
+        on_signal do |source, event_name, color, flavor|
+          sensor.ping(source, event_name, color, flavor)
+        end
+      end
+    end
+
+    it "should call back with the correct arguments" do
+      @sensor.should_receive(:ping).with(@instance, :on_signal, :purple, :grape)
+      @instance.send(:execute_hook, :on_signal, :purple, :grape)
+    end
+  end
+end
+
 describe Hookr::Hook do
   before :each do
     @class = Hookr::Hook
