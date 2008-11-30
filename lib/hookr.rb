@@ -3,6 +3,8 @@ require 'generator'
 require 'rubygems'
 require 'fail_fast'
 
+# Hookr is a library providing "hooks", aka "signals and slots", aka "events" to
+# your Ruby classes.
 module Hookr
 
   # Include this module to decorate your class with hookable goodness.
@@ -15,9 +17,10 @@ module Hookr
         (@hooks ||= HookSet.new)
       end
 
-      # Define a new hook +name+
+      # Define a new hook +name+.  If +params+ are supplied, they will become
+      # the hook's named parameters.
       def define_hook(name, *params)
-        hooks << Hook.new(name, nil, params)
+        hooks << make_hook(name, nil, params)
 
         # We must use string evaluation in order to define a method that can
         # receive a block.
@@ -34,6 +37,10 @@ module Hookr
       end
 
       protected
+
+      def make_hook(name, parent, params)
+        Hook.new(name, parent, params)
+      end
 
       private
 
@@ -124,7 +131,7 @@ module Hookr
     # In this way you can use callbacks as "around" advice to a block of
     # code. For instance:
     #
-    #    execute_hook(:write_data, data) do |event, data|
+    #    execute_hook(:write_data, data) do |data|
     #      write(data)
     #    end
     #
@@ -160,6 +167,8 @@ module Hookr
     # 3. a proc which delegates to +block+
     #
     # Intended for use with recursive hook execution.
+    #
+    # TODO: Some of this should probably be pushed down into Hookr::Hook.
     def callback_generator(hook_name, block)
       Generator.new do |g|
         hooks[:__wildcard__].callbacks.to_a.reverse.each do |callback|
@@ -169,7 +178,7 @@ module Hookr
           g.yield callback
         end
         g.yield(lambda do |event|
-                  block.call(event, *event.arguments)
+                  block.call(*event.arguments)
                 end)
       end
     end
@@ -280,6 +289,9 @@ module Hookr
   class HookSet < Set
     WILDCARD_HOOK = Hookr::Hook.new(:__wildcard__)
 
+    # Find hook by name.
+    #
+    # TODO: Optimize this.
     def [](key)
       detect {|v| v.name == key} or raise IndexError, "No such hook: #{key}"
     end
@@ -421,6 +433,13 @@ module Hookr
       end
     end
 
+    # This method, along with the callback generator defined in Hook,
+    # implements recursive callback execution.
+    #
+    # TODO: Consider making the next() automatically if the callback doesn't
+    # call it explicitly.
+    #
+    # TODO: Consider adding a cancel() method, implementation TBD.
     def next(*args)
       assert(recursive, callbacks)
       event = self.class.new(source, name, arguments, recursive, callbacks)

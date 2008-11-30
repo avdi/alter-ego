@@ -1,5 +1,8 @@
 require File.expand_path('spec_helper', File.dirname(__FILE__))
 
+class CustomHookType < Hookr::Hook
+end
+
 describe Hookr::Hooks do
   describe "included in a class" do
     before :each do
@@ -19,6 +22,34 @@ describe Hookr::Hooks do
       specify { @it.should have(0).hooks }
     end
 
+    describe "with an alternate .make_hook() defined and a hook :foo" do
+      before :each do
+        @class.module_eval do
+          def self.make_hook(name, parent, params)
+            CustomHookType.new(name, parent, params)
+          end
+        end
+        @class.instance_eval do
+          define_hook(:foo)
+        end
+      end
+
+      specify "the hook type should be defined by .make_hook()" do
+        @class.hooks[:foo].should be_a_kind_of(CustomHookType)
+      end
+
+      describe "and instantiated" do
+        before :each do
+          @it = @class.new
+        end
+
+        specify "the instance hook type should be defined by .make_hook()" do
+          @it.hooks[:foo].should be_a_kind_of(CustomHookType)
+        end
+
+      end
+    end
+
 
     describe "with a hook :foo defined" do
       before :each do
@@ -28,6 +59,10 @@ describe Hookr::Hooks do
       end
 
       specify { @class.should have(1).hooks }
+
+      specify "the hooks should be a Hookr::Hook" do
+        @class.hooks[:foo].should be_a_kind_of(Hookr::Hook)
+      end
 
       describe "and then subclassed" do
         before :each do
@@ -449,15 +484,15 @@ describe "a two-param hook named :on_signal" do
     end
 
     it "should be able to execute callbacks recursively" do
-      @instance.send(:execute_hook, :on_signal, :fizz, :buzz) do |event, arg1, arg2|
-        log(:inner, event.name, arg1, arg2)
+      @instance.send(:execute_hook, :on_signal, :fizz, :buzz) do |arg1, arg2|
+        log(:inner, arg1, arg2)
       end
 
       @log.should == [
        [:cb3_before, :on_signal, :fizz, :buzz],
        [:cb2_before, :on_signal, :fizz, :buzz],
        [:cb1_before, :on_signal, :pish, :tosh],
-       [:inner,      :on_signal, :pish, :tosh],
+       [:inner,                  :pish, :tosh],
        [:cb1_after,  :on_signal, :pish, :tosh],
        [:cb2_after,  :on_signal, :fizz, :buzz],
        [:cb3_after,  :on_signal, :fizz, :buzz]

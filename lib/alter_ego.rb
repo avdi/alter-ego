@@ -70,6 +70,24 @@ module AlterEgo
     end
   end
 
+  # A customization of Hookr::Hook to deal with the fact that State internal
+  # callbacks need to be executed in the context of the state's context, not the
+  # state object itself.
+  class StateHook < Hookr::Hook
+    class StateContextCallback < Hookr::InternalCallback
+      def call(event)
+        context = event.arguments.first
+        context.instance_eval(&block)
+      end
+    end
+
+    # Add an internal callback that executes in the context of the state
+    # context, instead of the state itself
+    def add_internal_callback(handle=nil, &block)
+      add_block_callback(StateContextCallback, handle, &block)
+    end
+  end
+
   class State
     include FailFast::Assertions
     extend FailFast::Assertions
@@ -122,6 +140,10 @@ module AlterEgo
       define_contextual_method_from_symbol_or_block(request, method, &block)
     end
 
+    def self.make_hook(name, parent, params)
+      ::AlterEgo::StateHook.new(name, parent, params)
+    end
+
     def valid_transitions
       self.class.valid_transitions
     end
@@ -161,8 +183,8 @@ module AlterEgo
               "Not allowed to transition from #{self.identifier} to #{new_state}")
       end
 
-      on_exit(context)
-      new_state_obj.on_enter(context)
+      execute_hook(:on_exit, context)
+      new_state_obj.execute_hook(:on_enter, context)
       context.state=(new_state)
       assert(new_state == context.state)
       true
@@ -170,8 +192,8 @@ module AlterEgo
 
     protected
 
-#     define_hook :on_enter, :params => [ :context ]
-#     define_hook :on_exit,  :params => [ :context ]
+    define_hook :on_enter, :context
+    define_hook :on_exit,  :context
 
     private
 
@@ -303,7 +325,7 @@ module AlterEgo
       AlterEgo::NotNilMatcher.instance
     end
 
-  end
+  end                           # End ClassMethods
 
   def self.append_features(klass)
     # Give the other module my instance methods at the class level
