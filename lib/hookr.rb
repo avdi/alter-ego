@@ -3,8 +3,6 @@ require 'rubygems'
 require 'fail_fast'
 
 # TODO:
-# * Parameterized hooks
-# * Method(s) for firing events
 # * Handle-based callback removal
 # * Recursive-style hooks
 # * Global callbacks

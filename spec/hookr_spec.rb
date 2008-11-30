@@ -307,6 +307,21 @@ describe "a two-param hook named :on_signal" do
     end
   end
 
+  describe "given a named class-level callback" do
+    before :each do
+      sensor = @sensor
+      @class.instance_eval do
+        on_signal :my_callback do
+        end
+      end
+    end
+
+    specify "the callback should be removable" do
+      @class_hook.remove_callback(:my_callback)
+      @class_hook.should have(0).callbacks
+    end
+  end
+
 end
 
 describe Hookr::Hook do
