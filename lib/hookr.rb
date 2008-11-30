@@ -41,7 +41,7 @@ module Hookr
         child.instance_variable_set(:@hooks, hooks.deep_copy)
       end
 
-    end                         # ClassMethods
+    end                         # end of ClassMethods
 
     # These methods are used at both the class and instance level
     module CallbackHelpers
@@ -94,7 +94,7 @@ module Hookr
       def add_method_callback(hook_name, method)
         hooks[hook_name].add_method_callback(self, method)
       end
-    end
+    end                         # end of CallbackHelpers
 
     def self.included(other)
       other.extend(ClassMethods)
@@ -108,6 +108,30 @@ module Hookr
       (@hooks ||= self.class.hooks.deep_copy)
     end
 
+    # Execute all callbacks associated with the hook identified by +hook_name+,
+    # plus any wildcard callbacks.
+    #
+    # When a block is supplied, this method functions differently.  In that case
+    # the callbacks are executed recursively. The most recently defined callback
+    # is executed and passed an event and a set of arguments.  Calling
+    # event.next will pass execution to the next most recently added callback,
+    # which again will be passed an event with a reference to the next callback,
+    # and so on.  When the list of callbacks are exhausted, the +block+ is
+    # executed as if it too were a callback.  If at any point event.next is
+    # passed arguments, they will replace the value of the callback arguments
+    # for callbacks further down the chain.
+    #
+    # In this way you can use callbacks as "around" advice to a block of
+    # code. For instance:
+    #
+    #    execute_hook(:write_data, data) do |event, data|
+    #      write(data)
+    #    end
+    #
+    # Here, the code exposes a :write_data hook.  Any callbacks attached to the
+    # hook will "wrap" the data writing event.  Callbacks might log when the
+    # data writing operation was started and stopped, or they might encrypt the
+    # data before it is written, etc.
     def execute_hook(hook_name, *args, &block)
       event = Event.new(self, hook_name, args, !!block)
 
@@ -130,6 +154,12 @@ module Hookr
       hooks[hook_name].execute_callbacks(event)
     end
 
+    # Returns a Generator which yields:
+    # 1. Wildcard callbacks, in reverse order, followed by
+    # 2. +hook_name+ callbacks, in reverse order, followed by
+    # 3. a proc which delegates to +block+
+    #
+    # Intended for use with recursive hook execution.
     def callback_generator(hook_name, block)
       Generator.new do |g|
         hooks[:__wildcard__].callbacks.to_a.reverse.each do |callback|
@@ -396,8 +426,7 @@ module Hookr
       event = self.class.new(source, name, arguments, recursive, callbacks)
       event.arguments = args unless args.empty?
       if callbacks.next?
-        next_callback = callbacks.next
-        next_callback.call(event)
+        callbacks.next.call(event)
       else
         raise "No more callbacks!"
       end
