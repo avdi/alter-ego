@@ -29,6 +29,24 @@ describe Hookr::Hooks do
 
       specify { @class.should have(1).hooks }
 
+      describe "and then subclassed" do
+        before :each do
+          @subclass = Class.new(@class)
+        end
+
+        specify "subclass should also have hook :foo" do
+          @subclass.hooks[:foo].should_not be_nil
+        end
+
+        specify "adding subclass hooks should not change superclass" do
+          @subclass.instance_eval do
+            define_hook(:bar)
+          end
+          @subclass.should have(2).hooks
+          @class.should have(1).hooks
+        end
+      end
+
       describe "and instantiated" do
         before :each do
           @it = @class.new
@@ -114,12 +132,19 @@ describe "a no-param hook named :on_signal" do
     @instance_hook.should have(0).callbacks
   end
 
-  describe "given an anonymous class-level block callback" do
+  specify "the instance hook's parent should be the class hook" do
+    @instance_hook.parent.should equal(@class_hook)
+  end
+
+  describe "given an class level and instance level callbacks" do
     before :each do
       @class.instance_eval do
         on_signal do
           1 + 1
         end
+      end
+      @instance_hook.add_external_callback do
+      # whatever
       end
     end
 
@@ -131,9 +156,10 @@ describe "a no-param hook named :on_signal" do
       @instance_hook.should have(1).callback
     end
 
-    specify "class and instance level callbacks should be the same object" do
-      @class_hook.callbacks[0].should equal(@instance_hook.callbacks.first)
+    specify "there should be two callbacks total" do
+      @instance_hook.total_callbacks.should == 2
     end
+
   end
 
   describe "given some named class-level block callbacks" do
@@ -152,8 +178,8 @@ describe "a no-param hook named :on_signal" do
       @class_hook.should have(2).callback
     end
 
-    it "should have two callbacks at the instance level" do
-      @instance_hook.should have(2).callback
+    it "should have no callbacks at the instance level" do
+      @instance_hook.should have(0).callback
     end
 
     specify ":callback1 should be the first callback" do

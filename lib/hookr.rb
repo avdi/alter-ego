@@ -2,7 +2,14 @@ require 'set'
 require 'rubygems'
 require 'fail_fast'
 
+# TODO:
+# * Handle-based callback removal
+# * Recursive-style hooks
 module Hookr
+
+  # Include this module to decorate your class with hookable goodness
+  #
+  # Note: remember to call super() if you define your own self.inherited().
   module Hooks
     module ClassMethods
       # Returns the hooks exposed by this class
@@ -27,7 +34,11 @@ module Hookr
       def add_callback(hook_name, handle=nil, &block)
         hooks[hook_name].add_external_callback(handle, &block)
       end
-    end
+
+      def inherited(child)
+        child.instance_variable_set(:@hooks, hooks.deep_copy)
+      end
+    end                         # ClassMethods
 
     def self.included(other)
       other.extend(ClassMethods)
@@ -35,14 +46,21 @@ module Hookr
 
     # returns the hooks exposed by this object
     def hooks
-      self.class.hooks
+      (@hooks ||= self.class.hooks.deep_copy)
     end
-
   end
 
   class HookSet < Set
     def [](key)
       detect {|v| v.name == key}
+    end
+
+    def deep_copy
+      result = HookSet.new
+      each do |hook|
+        result << hook.dup
+      end
+      result
     end
   end
 
