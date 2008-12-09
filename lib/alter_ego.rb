@@ -185,7 +185,7 @@ module AlterEgo
 
       execute_hook(:on_exit, context)
       new_state_obj.execute_hook(:on_enter, context)
-      context.state=(new_state)
+      context.state = new_state
       assert(new_state == context.state)
       true
     end
