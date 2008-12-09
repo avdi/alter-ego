@@ -178,7 +178,7 @@ module AlterEgo
                                                  new_state)
       return false unless continue
 
-      if (not valid_transitions.empty?) and (not valid_transitions.include?(new_state))
+      unless valid_transitions.empty? || valid_transitions.include?(new_state)
         raise(InvalidTransitionError,
               "Not allowed to transition from #{self.identifier} to #{new_state}")
       end
