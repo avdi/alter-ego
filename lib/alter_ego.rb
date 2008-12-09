@@ -6,6 +6,7 @@ require 'singleton'
 require 'rubygems'
 require 'activesupport'
 require 'fail_fast'
+require 'hookr'
 
 module AlterEgo
   VERSION = '1.0.0'
@@ -69,9 +70,28 @@ module AlterEgo
     end
   end
 
+  # A customization of Hookr::Hook to deal with the fact that State internal
+  # callbacks need to be executed in the context of the state's context, not the
+  # state object itself.
+  class StateHook < Hookr::Hook
+    class StateContextCallback < Hookr::InternalCallback
+      def call(event)
+        context = event.arguments.first
+        context.instance_eval(&block)
+      end
+    end
+
+    # Add an internal callback that executes in the context of the state
+    # context, instead of the state itself
+    def add_internal_callback(handle=nil, &block)
+      add_block_callback(StateContextCallback, handle, &block)
+    end
+  end
+
   class State
     include FailFast::Assertions
     extend FailFast::Assertions
+    include Hookr::Hooks
 
     def self.transition(options, &trans_action)
       options.assert_valid_keys(:to, :on, :if)
@@ -120,14 +140,8 @@ module AlterEgo
       define_contextual_method_from_symbol_or_block(request, method, &block)
     end
 
-    def self.on_enter(method = nil, &block)
-      assert(method.nil? ^ block.nil?)
-      define_contextual_method_from_symbol_or_block(:on_enter, method, &block)
-    end
-
-    def self.on_exit(method = nil, &block)
-      assert(method.nil? ^ block.nil?)
-      define_contextual_method_from_symbol_or_block(:on_exit, method, &block)
+    def self.make_hook(name, parent, params)
+      ::AlterEgo::StateHook.new(name, parent, params)
     end
 
     def valid_transitions
@@ -169,8 +183,8 @@ module AlterEgo
               "Not allowed to transition from #{self.identifier} to #{new_state}")
       end
 
-      on_exit(context)
-      new_state_obj.on_enter(context)
+      execute_hook(:on_exit, context)
+      new_state_obj.execute_hook(:on_enter, context)
       context.state=(new_state)
       assert(new_state == context.state)
       true
@@ -178,11 +192,8 @@ module AlterEgo
 
     protected
 
-    def on_exit(context)
-    end
-
-    def on_enter(context)
-    end
+    define_hook :on_enter, :context
+    define_hook :on_exit,  :context
 
     private
 
@@ -207,7 +218,7 @@ module AlterEgo
         end
       end
     end
-end
+  end
 
   module ClassMethods
     def state(identifier, options={}, &block)
@@ -314,7 +325,7 @@ end
       AlterEgo::NotNilMatcher.instance
     end
 
-  end
+  end                           # End ClassMethods
 
   def self.append_features(klass)
     # Give the other module my instance methods at the class level
