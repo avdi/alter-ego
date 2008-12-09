@@ -30,3 +30,5 @@ Dir['tasks/**/*.rake'].each { |t| load t }
 task :docs do |task|
   cp "State_Design_Pattern_UML_Class_Diagram.png", "doc"
 end
+
+task :default => :spec
