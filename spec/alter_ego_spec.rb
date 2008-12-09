@@ -472,7 +472,7 @@ describe TrafficLightWithRedCountdown, "that is yellow" do
     @it.cycle
   end
 
-  it "should raise an error if #seconds_till_red is called" do
+  it "should not raise an error when #seconds_till_red is called" do
     lambda do
       @it.seconds_till_red
     end.should_not raise_error
