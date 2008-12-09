@@ -198,16 +198,11 @@ module AlterEgo
     private
 
     def self.add_request_filter(request_pattern, new_state_pattern, action)
-      new_filter = RequestFilter.new(identifier,
-                                     request_pattern,
-                                     new_state_pattern,
-                                     action)
+      new_filter = RequestFilter.new(identifier, request_pattern, new_state_pattern, action)
       self.request_filters << new_filter
     end
 
-    def self.define_contextual_method_from_symbol_or_block(name,
-                                                           symbol,
-                                                           &block)
+    def self.define_contextual_method_from_symbol_or_block(name, symbol, &block)
       if symbol
         define_method(name) do |context, *args|
            context.send(symbol, *args)
