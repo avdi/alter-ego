@@ -1,7 +1,8 @@
 # -*- mode: org -*-
 * DONE Factor assertions out into separate library
   CLOSED: [2008-11-29 Sat 01:29]
-* TODO Remove ActiveSupport dependency
+* TODO Remove ActiveSupport dependency                      
+* TODO State memory
 * TODO Nested state support with history
 * TODO Verify full methods/respond_to? integration
 * TODO Composite state support
@@ -10,3 +11,18 @@
 * TODO More natural/Rubyish DSL
   It would be good to have plain-old "def" work as expected inside of "state"
   blocks instead of requiring "handle".
+* TODO Move everything into a namespace
+* TODO Make State dynamically-generated
+  And maybe make it a module while we're at it.
+#+BEGIN_SRC ruby
+  class TrafficLight
+    class ProceedState
+      include TrafficLight::State
+      # ...
+    end
+  end
+#+END_SRC
+* TODO Make State optionally delegate back to context
+  Context -> State Proxy -> State Object -> Context
+
+* TODO Switch to Mr. Bones

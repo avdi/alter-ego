@@ -1,7 +1,7 @@
 $:.unshift(File.dirname(__FILE__)) unless
   $:.include?(File.dirname(__FILE__)) || $:.include?(File.expand_path(File.dirname(__FILE__)))
 
-require 'forwardable'
+require 'delegate'
 require 'singleton'
 require 'rubygems'
 require 'activesupport'
@@ -9,7 +9,46 @@ require 'fail_fast'
 require 'hookr'
 
 module AlterEgo
+  # :stopdoc:
   VERSION = '1.0.0'
+  LIBPATH = ::File.expand_path(::File.dirname(__FILE__)) + ::File::SEPARATOR
+  PATH = ::File.dirname(LIBPATH) + ::File::SEPARATOR
+
+  # Returns the version string for the library.
+  #
+  def self.version
+    VERSION
+  end
+
+  # Returns the library path for the module. If any arguments are given,
+  # they will be joined to the end of the libray path using
+  # <tt>File.join</tt>.
+  #
+  def self.libpath( *args )
+    args.empty? ? LIBPATH : ::File.join(LIBPATH, args.flatten)
+  end
+
+  # Returns the lpath for the module. If any arguments are given,
+  # they will be joined to the end of the path using
+  # <tt>File.join</tt>.
+  #
+  def self.path( *args )
+    args.empty? ? PATH : ::File.join(PATH, args.flatten)
+  end
+
+  # Utility method used to rquire all files ending in .rb that lie in the
+  # directory below this file that has the same name as the filename passed
+  # in. Optionally, a specific _directory_ name can be passed in such that
+  # the _filename_ does not have to be equivalent to the directory.
+  #
+  def self.require_all_libs_relative_to( fname, dir = nil )
+    dir ||= ::File.basename(fname, '.*')
+    search_me = ::File.expand_path(
+        ::File.join(::File.dirname(fname), dir, '*', '*.rb'))
+
+    Dir.glob(search_me).sort.each {|rb| require rb}
+  end
+  # :startdoc:
 
   include FailFast::Assertions
 
@@ -70,11 +109,11 @@ module AlterEgo
     end
   end
 
-  # A customization of Hookr::Hook to deal with the fact that State internal
+  # A customization of HookR::Hook to deal with the fact that State internal
   # callbacks need to be executed in the context of the state's context, not the
   # state object itself.
-  class StateHook < Hookr::Hook
-    class StateContextCallback < Hookr::InternalCallback
+  class StateHook < HookR::Hook
+    class StateContextCallback < HookR::InternalCallback
       def call(event)
         context = event.arguments.first
         context.instance_eval(&block)
@@ -88,17 +127,17 @@ module AlterEgo
     end
   end
 
-  class State
+  class State < SimpleDelegator
     include FailFast::Assertions
     extend FailFast::Assertions
-    include Hookr::Hooks
+    include HookR::Hooks
 
     def self.transition(options, &trans_action)
       options.assert_valid_keys(:to, :on, :if)
       assert_keys(options, :to)
       guard    = options[:if]
       to_state = options[:to]
-      request   = options[:on]
+      request  = options[:on]
       if request
         handle(request) do
           transition_to(to_state, request)
@@ -148,8 +187,12 @@ module AlterEgo
       self.class.valid_transitions
     end
 
+    def inspect
+      "#<State:#{identifier}>"
+    end
+
     def to_s
-      "<State:#{identifier}>"
+      inspect
     end
 
     def identifier
@@ -167,7 +210,7 @@ module AlterEgo
 
     def transition_to(context, request, new_state, *args)
       return true if context.state == new_state
-      new_state_obj = context.state_for_identifier(new_state)
+      new_state_obj = context.states[new_state]
       unless new_state_obj
         raise(InvalidTransitionError,
               "Context #{context.inspect} has no state '#{new_state}' defined")
@@ -204,12 +247,12 @@ module AlterEgo
 
     def self.define_contextual_method_from_symbol_or_block(name, symbol, &block)
       if symbol
-        define_method(name) do |context, *args|
-           context.send(symbol, *args)
+        define_method(name) do |*args|
+           __getobj__.send(symbol, *args)
          end
       elsif block
-        define_method(name) do |context, *args|
-          context.send(:instance_eval, &block)
+        define_method(name) do |*args|
+          __getobj__.send(:instance_eval, &block)
         end
       end
     end
@@ -223,7 +266,7 @@ module AlterEgo
       new_state = Class.new(State)
       new_state_eigenclass = class << new_state; self; end
       new_state_eigenclass.send(:define_method, :identifier) { identifier }
-      new_state.instance_eval(&block) if block
+      new_state.module_eval(&block) if block
 
       add_state(new_state, identifier, options)
     end
@@ -258,7 +301,7 @@ module AlterEgo
     def add_state(new_state, identifier=new_state.identifier, options = {})
       options.assert_valid_keys(:default)
 
-      self.states[identifier] = new_state.new
+      self.states[identifier] = new_state
 
       if options[:default]
         if @default_state
@@ -270,7 +313,6 @@ module AlterEgo
       new_requests = (new_state.handled_requests - all_handled_requests)
       new_requests.each do |request|
         @state_proxy.send(:define_method, request) do |*args|
-          args.unshift(self)
           begin
             continue = execute_request_filters(current_state.identifier,
                                                request,
@@ -325,7 +367,6 @@ module AlterEgo
   def self.append_features(klass)
     # Give the other module my instance methods at the class level
     klass.extend(ClassMethods)
-    klass.extend(Forwardable)
 
     state_proxy = Module.new
     klass.instance_variable_set :@state_proxy, state_proxy
@@ -336,7 +377,15 @@ module AlterEgo
 
   def current_state
     state_id = self.state
-    state_id ? self.class.states[state_id] : nil
+    state_id ? self.states[state_id] : nil
+  end
+
+  def states
+    @states ||= Hash.new do |states, state_id|
+      state_obj = state_class_for_identifier(state_id).new(self)
+      states[state_id] = state_obj
+      state_obj
+    end
   end
 
   def state
@@ -349,7 +398,7 @@ module AlterEgo
     @state = identifier
   end
 
-  def state_for_identifier(identifier)
+  def state_class_for_identifier(identifier)
     self.class.states[identifier]
   end
 
@@ -385,3 +434,5 @@ module AlterEgo
   end
 
 end
+
+AlterEgo.require_all_libs_relative_to(__FILE__)

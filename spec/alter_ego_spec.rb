@@ -1,5 +1,5 @@
 require 'ostruct'
-require File.expand_path('spec_helper', File.dirname(__FILE__))
+require File.join(File.dirname(__FILE__), %w[spec_helper])
 
 # let's define a traffic light class with three states: proceed, caution, and
 # stop.  We'll leave the DSL for later, and use old-school class definitions to
@@ -138,7 +138,7 @@ class TrafficLightWithColors
     def self.identifier
       :proceed
     end
-    def color(traffic_light)
+    def color
       "green"
     end
   end
@@ -147,7 +147,7 @@ class TrafficLightWithColors
     def self.identifier
       :caution
     end
-    def color(traffic_light)
+    def color
       "yellow"
     end
   end
@@ -156,7 +156,7 @@ class TrafficLightWithColors
     def self.identifier
       :stop
     end
-    def color(traffic_light)
+    def color
       "red"
     end
   end
@@ -412,6 +412,63 @@ describe TrafficLightWithTransitions, "when red" do
     @it = TrafficLightWithTransitions.new
     @it.cycle
     @it.cycle
+  end
+
+  it_should_behave_like "a red light with color"
+end
+
+# Before we go on, let's introduce a variation on the DSL syntax.  In this
+# version, we'll use ordinary method definitions instead of "handle".
+
+class TrafficLightWithMethodDefs
+  include AlterEgo
+
+  state :proceed, :default => true do
+    def color
+      "green"
+    end
+    transition :to => :caution, :on => :cycle
+  end
+
+  state :caution do
+    def color
+      "yellow"
+    end
+    transition :to => :stop, :on => :cycle
+  end
+
+  state :stop do
+    def color
+      "red"
+    end
+    transition :to => :proceed, :on => :cycle
+  end
+
+  def initialize(starting_state = :proceed)
+    self.state=(starting_state)
+  end
+end
+
+
+describe TrafficLightWithMethodDefs, "when green" do
+  before :each do
+    @it = TrafficLightWithMethodDefs.new(:proceed)
+  end
+
+  it_should_behave_like "a green light with color"
+end
+
+describe TrafficLightWithMethodDefs, "when yellow" do
+  before :each do
+    @it = TrafficLightWithMethodDefs.new(:caution)
+  end
+
+  it_should_behave_like "a yellow light with color"
+end
+
+describe TrafficLightWithMethodDefs, "when red" do
+  before :each do
+    @it = TrafficLightWithMethodDefs.new(:stop)
   end
 
   it_should_behave_like "a red light with color"

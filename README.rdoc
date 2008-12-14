@@ -1,6 +1,6 @@
-= AlterEgo
-
-* http://alter-ego.rubyforge.org
+alter-ego
+    by Avdi Grimm
+    FIXME (url)
 
 == DESCRIPTION:
 
