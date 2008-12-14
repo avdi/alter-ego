@@ -6,15 +6,15 @@ require File.join(File.dirname(__FILE__), %w[spec_helper])
 # start out.
 
 class TrafficLightWithClassicStates
-  include AlterEgo
+  include AlterEgo::States
 
-  class ProceedState < State
+  class ProceedState < self::State
   end
 
-  class CautionState < State
+  class CautionState < self::State
   end
 
-  class StopState < State
+  class StopState < self::State
   end
 
   add_state(ProceedState)
@@ -39,17 +39,17 @@ end
 # will make them easier to work with.
 
 class TrafficLightWithIdentifiers
-  include AlterEgo
+  include AlterEgo::States
 
-  class ProceedState < State
+  class ProceedState < self::State
     def self.identifier; :proceed; end
   end
 
-  class CautionState < State
+  class CautionState < self::State
     def self.identifier; :caution; end
   end
 
-  class StopState < State
+  class StopState < self::State
     def self.identifier; :stop; end
   end
 
@@ -132,9 +132,9 @@ end
 # some state-specific behaviour.
 
 class TrafficLightWithColors
-  include AlterEgo
+  include AlterEgo::States
 
-  class ProceedState < State
+  class ProceedState < self::State
     def self.identifier
       :proceed
     end
@@ -143,7 +143,7 @@ class TrafficLightWithColors
     end
   end
 
-  class CautionState < State
+  class CautionState < self::State
     def self.identifier
       :caution
     end
@@ -152,7 +152,7 @@ class TrafficLightWithColors
     end
   end
 
-  class StopState < State
+  class StopState < self::State
     def self.identifier
       :stop
     end
@@ -227,7 +227,7 @@ end
 # there is no longer any need for an explicit #add_state call.
 
 class TrafficLightDescribedByDsl
-  include AlterEgo
+  include AlterEgo::States
 
   state :proceed do
     handle :color do
@@ -290,7 +290,7 @@ end
 # context object, that is, the object which has a state.
 
 class TrafficLightWithCycleHandler
-  include AlterEgo
+  include AlterEgo::States
 
   state :proceed do
     handle :color do
@@ -356,7 +356,7 @@ end
 # eliminate the initializer.
 
 class TrafficLightWithTransitions
-  include AlterEgo
+  include AlterEgo::States
 
   state :proceed, :default => true do
     handle :color do
@@ -421,7 +421,7 @@ end
 # version, we'll use ordinary method definitions instead of "handle".
 
 class TrafficLightWithMethodDefs
-  include AlterEgo
+  include AlterEgo::States
 
   state :proceed, :default => true do
     def color
@@ -484,7 +484,7 @@ end
 # call this method when the light is yellow.
 
 class TrafficLightWithRedCountdown
-  include AlterEgo
+  include AlterEgo::States
 
   state :proceed, :default => true do
     handle :color do
@@ -556,7 +556,7 @@ end
 # handlers to switch an alarm on and off.
 
 class TrafficLightWithAlarm
-  include AlterEgo
+  include AlterEgo::States
 
   state :proceed, :default => true do
     handle :color do
@@ -641,7 +641,7 @@ end
 # each time the state changes.
 
 class TrafficLightWithGuards
-  include AlterEgo
+  include AlterEgo::States
 
   state :proceed, :default => true do
     handle :color do
@@ -810,7 +810,7 @@ end
 # arrangement.
 
 class TrafficLightWithCustomStorage
-  include AlterEgo
+  include AlterEgo::States
 
   state :proceed, :default => true do
     handle :color do
@@ -957,7 +957,7 @@ end
 # use a request filter and a state matching pattern to accomplish this.
 
 class TrafficLightWithTransAction
-  include AlterEgo
+  include AlterEgo::States
 
   state :proceed, :default => true do
     handle :color do
