@@ -1,15 +1,17 @@
 $:.unshift(File.dirname(__FILE__)) unless
   $:.include?(File.dirname(__FILE__)) || $:.include?(File.expand_path(File.dirname(__FILE__)))
 
+gem 'hookr',     "~> 1.0.0"
+gem 'fail-fast', "~> 1.1.0"
+
 require 'forwardable'
 require 'singleton'
 require 'rubygems'
-require 'activesupport'
 require 'fail_fast'
 require 'hookr'
 
 module AlterEgo
-  VERSION = '1.0.0'
+  VERSION = '1.0.1'
 
   include FailFast::Assertions
 
@@ -70,11 +72,11 @@ module AlterEgo
     end
   end
 
-  # A customization of Hookr::Hook to deal with the fact that State internal
+  # A customization of HookR::Hook to deal with the fact that State internal
   # callbacks need to be executed in the context of the state's context, not the
   # state object itself.
-  class StateHook < Hookr::Hook
-    class StateContextCallback < Hookr::InternalCallback
+  class StateHook < HookR::Hook
+    class StateContextCallback < HookR::InternalCallback
       def call(event)
         context = event.arguments.first
         context.instance_eval(&block)
@@ -91,10 +93,10 @@ module AlterEgo
   class State
     include FailFast::Assertions
     extend FailFast::Assertions
-    include Hookr::Hooks
+    include HookR::Hooks
 
     def self.transition(options, &trans_action)
-      options.assert_valid_keys(:to, :on, :if)
+      assert_only_keys(options, :to, :on, :if)
       assert_keys(options, :to)
       guard    = options[:if]
       to_state = options[:to]
@@ -216,6 +218,8 @@ module AlterEgo
   end
 
   module ClassMethods
+    include FailFast::Assertions
+
     def state(identifier, options={}, &block)
       if states.has_key?(identifier)
         raise InvalidDefinitionError, "State #{identifier.inspect} already defined"
@@ -229,7 +233,7 @@ module AlterEgo
     end
 
     def request_filter(options, &block)
-      options.assert_valid_keys(:state, :request, :new_state, :action)
+      assert_only_keys(options, :state, :request, :new_state, :action)
       options = {
         :state     => not_nil,
         :request   => not_nil,
@@ -256,7 +260,7 @@ module AlterEgo
     end
 
     def add_state(new_state, identifier=new_state.identifier, options = {})
-      options.assert_valid_keys(:default)
+      assert_only_keys(options, :default)
 
       self.states[identifier] = new_state.new
 
