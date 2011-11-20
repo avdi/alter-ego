@@ -9,7 +9,7 @@ $hoe = Hoe.new('alter-ego', AlterEgo::VERSION) do |p|
   p.rubyforge_name       = p.name # TODO this is default value
   p.extra_deps         = [
     ['fail-fast',    '~> 1.1.0'],
-    ['hookr',        '~> 1.0.0']
+    ['hookr',        '>= 1.0.0']
   ]
   p.extra_dev_deps = [
     ['newgem', ">= #{::Newgem::VERSION}"]
