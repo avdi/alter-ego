@@ -16,21 +16,21 @@ easy to give an object different personalities depending on the state it is in.
 
     state :proceed, :default => true do
       handle :color do
-	"green"
+        "green"
       end
       transition :to => :caution, :on => :cycle!
     end
 
     state :caution do
       handle :color do
-	"yellow"
+        "yellow"
       end
       transition :to => :stop, :on => :cycle!
     end
 
     state :stop do
       handle :color do
-	"red"
+        "red"
       end 
       transition :to => :proceed, :on => :cycle!
     end
